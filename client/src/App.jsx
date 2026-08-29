@@ -23,7 +23,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:5050';
+// Production Backend API & WebSockets URL (reads from VITE_BACKEND_URL env var, defaults to localhost:5050)
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5050';
 
 function App() {
   // Navigation & Authentication
