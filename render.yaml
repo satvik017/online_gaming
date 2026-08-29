@@ -1,0 +1,35 @@
+services:
+  # Backend Express + Socket.IO Server
+  - type: web
+    name: vortex-play-server
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install --prefix server
+    startCommand: npm start --prefix server
+    envVars:
+      - key: PORT
+        value: 5050
+      - key: MONGODB_URI
+        value: mongodb+srv://satviksharma2711_db_user:q8wDQGN1DSdIjbj6@satvikg.vraogkp.mongodb.net/vortex_gaming?retryWrites=true&w=majority
+      - key: JWT_SECRET
+        value: vortex-super-secret-key-10982-x
+
+  # Frontend React Vite Static Site
+  - type: web
+    name: vortex-play-client
+    env: static
+    region: singapore
+    plan: free
+    buildCommand: npm install --prefix client --legacy-peer-deps && npm run build --prefix client
+    staticPublishPath: ./client/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_BACKEND_URL
+        fromService:
+          type: web
+          name: vortex-play-server
+          property: host

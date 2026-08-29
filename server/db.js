@@ -1,181 +1,219 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import dns from 'dns';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_PATH = path.join(__dirname, 'data', 'db.json');
-
-// Ensure data directory exists
-const dir = path.dirname(DB_PATH);
-if (!fs.existsSync(dir)) {
-  fs.mkdirSync(dir, { recursive: true });
+// Fix DNS SRV lookup issues on Windows networks
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  // fallback if system restricts custom DNS
 }
 
-const defaultDb = {
-  users: [],
-  machines: [],
-  transactions: [],
-  sessions: []
-};
+// --- MONGOOSE SCHEMAS & MODELS ---
 
-// Seed database helper
-const seedDb = async (db) => {
-  let modified = false;
+const UserSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  username: { type: String, required: true, unique: true },
+  passwordHash: { type: String, required: true },
+  isAdmin: { type: Boolean, default: false },
+  tokenBalance: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
 
-  // Add default admin if no users exist
-  if (db.users.length === 0) {
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash('admin123', salt);
-    db.users.push({
-      id: 'usr_admin',
-      username: 'admin',
-      passwordHash,
-      isAdmin: true,
-      tokenBalance: 1000,
-      createdAt: new Date().toISOString()
-    });
+const MachineSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  type: { type: String, default: 'ps5' }, // ps5, xbox, pc
+  status: { type: String, default: 'available' }, // available, in-use, offline
+  ipAddress: { type: String, default: '127.0.0.1' },
+  activeGame: { type: String, default: 'Lobby Menu' },
+  tokenCostPerSession: { type: Number, default: 1 },
+  currentUserId: { type: String, default: null },
+  currentUsername: { type: String, default: null }
+}, { timestamps: true });
 
-    // Also add a default regular user for testing
-    const userHash = await bcrypt.hash('user123', salt);
-    db.users.push({
-      id: 'usr_demo',
-      username: 'demo',
-      passwordHash: userHash,
-      isAdmin: false,
-      tokenBalance: 10,
-      createdAt: new Date().toISOString()
-    });
+const TransactionSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
+  type: { type: String, required: true }, // 'purchase' | 'spend'
+  amount: { type: Number, required: true },
+  cost: { type: Number, default: 0 },
+  status: { type: String, default: 'completed' },
+  timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
 
-    modified = true;
-  }
+const SessionSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
+  machineId: { type: String, required: true },
+  startTime: { type: Date, default: Date.now },
+  endTime: { type: Date, default: null },
+  durationSec: { type: Number, required: true },
+  status: { type: String, default: 'active' }, // active, completed
+  endReason: { type: String, default: null }
+}, { timestamps: true });
 
-  // Add default machines if none exist
-  if (db.machines.length === 0) {
-    db.machines = [
-      {
-        id: 'mach_ps5_01',
-        name: 'PS5 Pro - Tokyo Node 1',
-        type: 'ps5',
-        status: 'available', // available, in-use, offline
-        ipAddress: '192.168.1.100',
-        activeGame: 'Gran Turismo 7',
-        tokenCostPerSession: 1, // 1 token per 5 minute session
-        currentUserId: null,
-        currentUsername: null
-      },
-      {
-        id: 'mach_ps5_02',
-        name: 'PS5 Pro - Tokyo Node 2',
-        type: 'ps5',
-        status: 'available',
-        ipAddress: '192.168.1.101',
-        activeGame: 'Elden Ring: Shadow of the Erdtree',
-        tokenCostPerSession: 1,
-        currentUserId: null,
-        currentUsername: null
-      },
-      {
-        id: 'mach_xbox_01',
-        name: 'Xbox Series X - Seattle Node 1',
-        type: 'xbox',
-        status: 'available',
-        ipAddress: '192.168.2.50',
-        activeGame: 'Forza Horizon 5',
-        tokenCostPerSession: 1,
-        currentUserId: null,
-        currentUsername: null
-      },
-      {
-        id: 'mach_pc_01',
-        name: 'Liquid PC RTX 4090 - Frankfurt',
-        type: 'pc',
-        status: 'available',
-        ipAddress: '10.0.0.12',
-        activeGame: 'Cyberpunk 2077 (Path Tracing)',
-        tokenCostPerSession: 2,
-        currentUserId: null,
-        currentUsername: null
-      }
-    ];
-    modified = true;
-  }
-
-  return modified;
-};
-
-// Safe thread-safe DB read/write
-export const readDb = () => {
-  try {
-    if (!fs.existsSync(DB_PATH)) {
-      fs.writeFileSync(DB_PATH, JSON.stringify(defaultDb, null, 2));
-      return defaultDb;
-    }
-    const raw = fs.readFileSync(DB_PATH, 'utf8');
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Error reading JSON DB, returning default:', err);
-    return defaultDb;
-  }
-};
-
-export const writeDb = (data) => {
-  try {
-    const tempPath = `${DB_PATH}.tmp`;
-    fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
-    fs.renameSync(tempPath, DB_PATH);
-    return true;
-  } catch (err) {
-    console.error('Error writing to JSON DB:', err);
-    return false;
-  }
-};
+export const User = mongoose.model('User', UserSchema);
+export const Machine = mongoose.model('Machine', MachineSchema);
+export const Transaction = mongoose.model('Transaction', TransactionSchema);
+export const Session = mongoose.model('Session', SessionSchema);
 
 // Helper to generate IDs
 const generateId = (prefix) => `${prefix}_${Math.random().toString(36).substr(2, 9)}`;
 
-// Database Operations
+// --- DATABASE CONNECTION & SEEDING ---
+
+export const connectDB = async (uri) => {
+  const mongoUri = uri || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/vortex_gaming';
+  try {
+    await mongoose.connect(mongoUri);
+    console.log('Successfully connected to MongoDB Atlas database.');
+    await seedDb();
+  } catch (err) {
+    console.error('Failed to connect to MongoDB Atlas:', err);
+    throw err;
+  }
+};
+
+const seedDb = async () => {
+  try {
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+      const salt = await bcrypt.genSalt(10);
+      const adminHash = await bcrypt.hash('admin123', salt);
+      const userHash = await bcrypt.hash('user123', salt);
+
+      await User.create([
+        {
+          id: 'usr_admin',
+          username: 'admin',
+          passwordHash: adminHash,
+          isAdmin: true,
+          tokenBalance: 1000,
+          createdAt: new Date()
+        },
+        {
+          id: 'usr_demo',
+          username: 'demo',
+          passwordHash: userHash,
+          isAdmin: false,
+          tokenBalance: 10,
+          createdAt: new Date()
+        }
+      ]);
+      console.log('Default admin & demo user seeded in MongoDB Atlas.');
+    }
+
+    const machineCount = await Machine.countDocuments();
+    if (machineCount === 0) {
+      await Machine.create([
+        {
+          id: 'mach_ps5_01',
+          name: 'PS5 Pro - Tokyo Node 1',
+          type: 'ps5',
+          status: 'available',
+          ipAddress: '192.168.1.100',
+          activeGame: 'Gran Turismo 7',
+          tokenCostPerSession: 1,
+          currentUserId: null,
+          currentUsername: null
+        },
+        {
+          id: 'mach_ps5_02',
+          name: 'PS5 Pro - Tokyo Node 2',
+          type: 'ps5',
+          status: 'available',
+          ipAddress: '192.168.1.101',
+          activeGame: 'Elden Ring: Shadow of the Erdtree',
+          tokenCostPerSession: 1,
+          currentUserId: null,
+          currentUsername: null
+        },
+        {
+          id: 'mach_xbox_01',
+          name: 'Xbox Series X - Seattle Node 1',
+          type: 'xbox',
+          status: 'available',
+          ipAddress: '192.168.2.50',
+          activeGame: 'Forza Horizon 5',
+          tokenCostPerSession: 1,
+          currentUserId: null,
+          currentUsername: null
+        },
+        {
+          id: 'mach_pc_01',
+          name: 'Liquid PC RTX 4090 - Frankfurt',
+          type: 'pc',
+          status: 'available',
+          ipAddress: '10.0.0.12',
+          activeGame: 'Cyberpunk 2077 (Path Tracing)',
+          tokenCostPerSession: 2,
+          currentUserId: null,
+          currentUsername: null
+        }
+      ]);
+      console.log('Default gaming nodes seeded in MongoDB Atlas.');
+    }
+  } catch (err) {
+    console.error('Error seeding MongoDB Atlas database:', err);
+  }
+};
+
+// --- ASYNC DATABASE OPERATIONS ---
+
 export const dbOps = {
   // Users
-  getUsers: () => readDb().users,
-  getUserById: (id) => readDb().users.find(u => u.id === id),
-  getUserByUsername: (username) => readDb().users.find(u => u.username.toLowerCase() === username.toLowerCase()),
+  getUsers: async () => {
+    return await User.find().lean();
+  },
+
+  getUserById: async (id) => {
+    return await User.findOne({ id }).lean();
+  },
+
+  getUserByUsername: async (username) => {
+    if (!username) return null;
+    return await User.findOne({ username: new RegExp(`^${username}$`, 'i') }).lean();
+  },
+
   createUser: async (username, password, isAdmin = false) => {
-    const db = readDb();
-    const existing = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    const existing = await User.findOne({ username: new RegExp(`^${username}$`, 'i') });
     if (existing) throw new Error('User already exists');
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
-    const newUser = {
+    const newUser = await User.create({
       id: generateId('usr'),
       username,
       passwordHash,
       isAdmin,
       tokenBalance: 0,
-      createdAt: new Date().toISOString()
-    };
-    db.users.push(newUser);
-    writeDb(db);
-    return newUser;
+      createdAt: new Date()
+    });
+    return newUser.toObject();
   },
-  updateUserTokens: (userId, amount) => {
-    const db = readDb();
-    const userIndex = db.users.findIndex(u => u.id === userId);
-    if (userIndex === -1) throw new Error('User not found');
-    
-    db.users[userIndex].tokenBalance = Math.max(0, db.users[userIndex].tokenBalance + amount);
-    writeDb(db);
-    return db.users[userIndex];
+
+  updateUserTokens: async (userId, amount) => {
+    const user = await User.findOne({ id: userId });
+    if (!user) throw new Error('User not found');
+
+    const newBalance = Math.max(0, user.tokenBalance + amount);
+    user.tokenBalance = newBalance;
+    await user.save();
+    return user.toObject();
   },
 
   // Machines
-  getMachines: () => readDb().machines,
-  getMachineById: (id) => readDb().machines.find(m => m.id === id),
-  createMachine: (machineData) => {
-    const db = readDb();
-    const newMachine = {
+  getMachines: async () => {
+    return await Machine.find().lean();
+  },
+
+  getMachineById: async (id) => {
+    return await Machine.findOne({ id }).lean();
+  },
+
+  createMachine: async (machineData) => {
+    const newMachine = await Machine.create({
       id: generateId('mach'),
       name: machineData.name,
       type: machineData.type || 'ps5',
@@ -185,84 +223,72 @@ export const dbOps = {
       tokenCostPerSession: parseInt(machineData.tokenCostPerSession) || 1,
       currentUserId: null,
       currentUsername: null
-    };
-    db.machines.push(newMachine);
-    writeDb(db);
-    return newMachine;
+    });
+    return newMachine.toObject();
   },
-  updateMachine: (id, updates) => {
-    const db = readDb();
-    const index = db.machines.findIndex(m => m.id === id);
-    if (index === -1) throw new Error('Machine not found');
 
-    db.machines[index] = { ...db.machines[index], ...updates };
-    writeDb(db);
-    return db.machines[index];
+  updateMachine: async (id, updates) => {
+    const updated = await Machine.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean();
+    if (!updated) throw new Error('Machine not found');
+    return updated;
   },
-  deleteMachine: (id) => {
-    const db = readDb();
-    const filtered = db.machines.filter(m => m.id !== id);
-    if (filtered.length === db.machines.length) throw new Error('Machine not found');
-    db.machines = filtered;
-    writeDb(db);
+
+  deleteMachine: async (id) => {
+    const res = await Machine.findOneAndDelete({ id });
+    if (!res) throw new Error('Machine not found');
     return true;
   },
 
   // Transactions
-  getTransactions: () => readDb().transactions,
-  getTransactionsByUserId: (userId) => readDb().transactions.filter(t => t.userId === userId),
-  createTransaction: (userId, type, amount, cost = 0, status = 'completed') => {
-    const db = readDb();
-    const newTx = {
+  getTransactions: async () => {
+    return await Transaction.find().lean();
+  },
+
+  getTransactionsByUserId: async (userId) => {
+    return await Transaction.find({ userId }).sort({ timestamp: -1 }).lean();
+  },
+
+  createTransaction: async (userId, type, amount, cost = 0, status = 'completed') => {
+    const newTx = await Transaction.create({
       id: generateId('tx'),
       userId,
-      type, // 'purchase' | 'spend'
+      type,
       amount,
       cost,
       status,
-      timestamp: new Date().toISOString()
-    };
-    db.transactions.push(newTx);
-    writeDb(db);
-    return newTx;
+      timestamp: new Date()
+    });
+    return newTx.toObject();
   },
 
   // Sessions
-  getSessions: () => readDb().sessions,
-  getActiveSessionByMachine: (machineId) => readDb().sessions.find(s => s.machineId === machineId && s.status === 'active'),
-  getActiveSessionByUser: (userId) => readDb().sessions.find(s => s.userId === userId && s.status === 'active'),
-  createSession: (userId, machineId, durationSec) => {
-    const db = readDb();
-    const newSess = {
+  getSessions: async () => {
+    return await Session.find().lean();
+  },
+
+  getActiveSessionByMachine: async (machineId) => {
+    return await Session.findOne({ machineId, status: 'active' }).lean();
+  },
+
+  getActiveSessionByUser: async (userId) => {
+    return await Session.findOne({ userId, status: 'active' }).lean();
+  },
+
+  createSession: async (userId, machineId, durationSec) => {
+    const newSess = await Session.create({
       id: generateId('sess'),
       userId,
       machineId,
-      startTime: new Date().toISOString(),
+      startTime: new Date(),
       durationSec,
       status: 'active'
-    };
-    db.sessions.push(newSess);
-    writeDb(db);
-    return newSess;
+    });
+    return newSess.toObject();
   },
-  updateSession: (id, updates) => {
-    const db = readDb();
-    const index = db.sessions.findIndex(s => s.id === id);
-    if (index === -1) throw new Error('Session not found');
 
-    db.sessions[index] = { ...db.sessions[index], ...updates };
-    writeDb(db);
-    return db.sessions[index];
+  updateSession: async (id, updates) => {
+    const updated = await Session.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean();
+    if (!updated) throw new Error('Session not found');
+    return updated;
   }
 };
-
-// Seed DB on load
-const currentDb = readDb();
-seedDb(currentDb).then((modified) => {
-  if (modified) {
-    writeDb(currentDb);
-    console.log('Database successfully seeded with default assets.');
-  } else {
-    console.log('Database loaded successfully (already seeded).');
-  }
-});
