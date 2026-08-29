@@ -15,12 +15,10 @@ services:
       - key: JWT_SECRET
         value: vortex-super-secret-key-10982-x
 
-  # Frontend React Vite Static Site
+  # Frontend React Vite Static Site (Global CDN)
   - type: web
     name: vortex-play-client
     env: static
-    region: singapore
-    plan: free
     buildCommand: npm install --prefix client --legacy-peer-deps && npm run build --prefix client
     staticPublishPath: ./client/dist
     routes:
