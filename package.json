@@ -1,0 +1,15 @@
+{
+  "name": "vortex-play-root",
+  "version": "1.0.0",
+  "description": "Root configuration for Vortex Play Virtual Gaming Lounge",
+  "main": "server/index.js",
+  "scripts": {
+    "install-all": "npm install && npm install --prefix server && npm install --prefix client --legacy-peer-deps",
+    "server": "npm start --prefix server",
+    "client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
