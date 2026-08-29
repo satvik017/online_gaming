@@ -2,6 +2,12 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import dns from 'dns';
 
+/**
+ * Vortex Play - Database Access Layer & MongoDB Atlas Interface
+ * Handles Mongoose Schemas (User, Machine, Transaction, Session, Package, Settings),
+ * database auto-seeding, DNS SRV resolution for Windows, and async dbOps helper functions.
+ */
+
 // Fix DNS SRV lookup issues on Windows networks
 if (process.platform === 'win32') {
   try {
@@ -13,6 +19,7 @@ if (process.platform === 'win32') {
 
 // --- MONGOOSE SCHEMAS & MODELS ---
 
+// User Profile Schema: Tracks credentials, admin status, and token key balance
 const UserSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   username: { type: String, required: true, unique: true },
