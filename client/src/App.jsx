@@ -71,6 +71,11 @@ function App() {
   const [newMachineIp, setNewMachineIp] = useState('192.168.1.100');
   const [newMachineGame, setNewMachineGame] = useState('Elden Ring');
   const [newMachineCost, setNewMachineCost] = useState(1);
+  const [newMachineCpu, setNewMachineCpu] = useState('Custom AMD Zen 2 8-Core');
+  const [newMachineGpu, setNewMachineGpu] = useState('RDNA 2 Engine (10.28 TFLOPS)');
+  const [newMachineRam, setNewMachineRam] = useState('16GB GDDR6 Unified');
+  const [newMachineResolution, setNewMachineResolution] = useState('4K @ 60 FPS');
+  const [newMachineRegion, setNewMachineRegion] = useState('Tokyo - Asia East');
   const [adminActionError, setAdminActionError] = useState('');
 
   // Sockets & Refs
@@ -79,11 +84,21 @@ function App() {
   const animationFrameRef = useRef(null);
   const logTerminalEndRef = useRef(null);
 
-  const packages = [
+  // Admin Package & Settings Config State
+  const [packages, setPackages] = useState([
     { id: 'pkg_starter', tokens: 5, price: 5.00, title: 'Casual Pack', desc: 'Perfect for a quick session.' },
     { id: 'pkg_pro', tokens: 12, price: 10.00, title: 'Gamer Pack', desc: 'Most Popular. Extra play time.', recommended: true },
     { id: 'pkg_elite', tokens: 30, price: 20.00, title: 'Pro Streamer Pack', desc: 'Ultimate package for hardcore gamers.' }
-  ];
+  ]);
+  const [systemSettings, setSystemSettings] = useState({ sessionDurationMinutes: 15 });
+  const [newPkgTitle, setNewPkgTitle] = useState('');
+  const [newPkgTokens, setNewPkgTokens] = useState(10);
+  const [newPkgPrice, setNewPkgPrice] = useState(10.00);
+  const [newPkgDesc, setNewPkgDesc] = useState('');
+  const [newPkgRecommended, setNewPkgRecommended] = useState(false);
+  const [configDurationMinutes, setConfigDurationMinutes] = useState(15);
+  const [packageActionError, setPackageActionError] = useState('');
+  const [settingsActionError, setSettingsActionError] = useState('');
 
   // Helper: Enforce headers and wrapper for fetch API
   const apiFetch = async (endpoint, options = {}) => {
@@ -126,7 +141,7 @@ function App() {
     }
   };
 
-  // Fetch Machines List
+  // Fetch Core Data
   const fetchMachines = async () => {
     try {
       const data = await apiFetch('/api/machines');
@@ -136,10 +151,37 @@ function App() {
     }
   };
 
+  const fetchPackages = async () => {
+    try {
+      const data = await apiFetch('/api/packages');
+      setPackages(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const data = await apiFetch('/api/settings');
+      setSystemSettings(data);
+      if (data.sessionDurationMinutes) {
+        setConfigDurationMinutes(data.sessionDurationMinutes);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Load basic components on boot
   useEffect(() => {
     fetchMachines();
-    const interval = setInterval(fetchMachines, 10000);
+    fetchPackages();
+    fetchSettings();
+    const interval = setInterval(() => {
+      fetchMachines();
+      fetchPackages();
+      fetchSettings();
+    }, 10000);
     return () => clearInterval(interval);
   }, [token]);
 
@@ -149,6 +191,17 @@ function App() {
 
     socketRef.current.on('machines_update', (updatedMachines) => {
       setMachines(updatedMachines);
+    });
+
+    socketRef.current.on('packages_update', (updatedPkgs) => {
+      setPackages(updatedPkgs);
+    });
+
+    socketRef.current.on('settings_update', (updatedSettings) => {
+      setSystemSettings(updatedSettings);
+      if (updatedSettings.sessionDurationMinutes) {
+        setConfigDurationMinutes(updatedSettings.sessionDurationMinutes);
+      }
     });
 
     socketRef.current.on('play_timer', ({ secondsLeft }) => {
@@ -670,16 +723,88 @@ function App() {
           type: newMachineType,
           ipAddress: newMachineIp,
           activeGame: newMachineGame,
-          tokenCostPerSession: newMachineCost
+          tokenCostPerSession: newMachineCost,
+          cpuSpec: newMachineCpu,
+          gpuSpec: newMachineGpu,
+          ramSpec: newMachineRam,
+          resolutionSpec: newMachineResolution,
+          regionTag: newMachineRegion
         })
       });
 
       setNewMachineName('');
       setNewMachineGame('');
       fetchAdminData();
-      alert('Node added and linked to virtual cluster.');
+      alert('Node added and linked to virtual cluster with hardware specs.');
     } catch (err) {
       setAdminActionError(err.message);
+    }
+  };
+
+  const handleCreatePackage = async (e) => {
+    e.preventDefault();
+    setPackageActionError('');
+    if (!newPkgTitle || !newPkgTokens || !newPkgPrice) {
+      setPackageActionError('Title, token count, and price are required');
+      return;
+    }
+
+    try {
+      await apiFetch('/api/packages', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: newPkgTitle,
+          tokens: parseInt(newPkgTokens),
+          price: parseFloat(newPkgPrice),
+          desc: newPkgDesc,
+          recommended: newPkgRecommended
+        })
+      });
+
+      setNewPkgTitle('');
+      setNewPkgDesc('');
+      setNewPkgTokens(10);
+      setNewPkgPrice(10.00);
+      setNewPkgRecommended(false);
+      fetchPackages();
+      alert('Token package added to Key Shop.');
+    } catch (err) {
+      setPackageActionError(err.message);
+    }
+  };
+
+  const handleDeletePackage = async (id) => {
+    if (window.confirm('Delete this token package from the shop?')) {
+      try {
+        await apiFetch(`/api/packages/${id}`, {
+          method: 'DELETE'
+        });
+        fetchPackages();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  };
+
+  const handleUpdateSessionDuration = async (e) => {
+    e.preventDefault();
+    setSettingsActionError('');
+    try {
+      const duration = parseInt(configDurationMinutes);
+      if (!duration || duration <= 0) {
+        setSettingsActionError('Session duration must be a positive integer');
+        return;
+      }
+
+      const res = await apiFetch('/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ sessionDurationMinutes: duration })
+      });
+
+      setSystemSettings(res);
+      alert(`Per-Token Play Duration updated to ${duration} minutes per token.`);
+    } catch (err) {
+      setSettingsActionError(err.message);
     }
   };
 
@@ -1004,10 +1129,31 @@ function App() {
                         </div>
                       </div>
 
-                      {/* Device Title */}
+                      {/* Device Title & Region */}
                       <h4 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.25rem' }}>{machine.name}</h4>
-                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: '1.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: '0.75rem' }}>
                         <span>IP: {machine.ipAddress}</span>
+                        {machine.regionTag && (
+                          <span style={{ color: 'var(--accent-cyan)', background: 'rgba(0, 243, 255, 0.08)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                            📍 {machine.regionTag}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Hardware Specs Grid Badges */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginBottom: '1.25rem', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#fff' }}>GPU:</strong> {machine.gpuSpec || 'Ray-Tracing GPU'}
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#fff' }}>RAM:</strong> {machine.ramSpec || '16GB High-Speed'}
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#fff' }}>CPU:</strong> {machine.cpuSpec || '8-Core Processor'}
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#fff' }}>MAX:</strong> {machine.resolutionSpec || '4K @ 60 FPS'}
+                        </div>
                       </div>
 
                       {/* Current Game */}
@@ -1025,7 +1171,7 @@ function App() {
                           <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Key Cost</span>
                           <span style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                             <Coins size={14} color="var(--accent-cyan)" />
-                            {machine.tokenCostPerSession} Token(s) <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>/ 5m</span>
+                            {machine.tokenCostPerSession} Token(s) <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>/ {systemSettings.sessionDurationMinutes || 15}m</span>
                           </span>
                         </div>
 
@@ -1220,7 +1366,12 @@ function App() {
               {/* Token packages shop */}
               <div>
                 <h3 style={{ fontSize: '1.8rem', color: '#fff', marginBottom: '0.5rem' }}>Vortex Key Shop</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '2rem' }}>Top up tokens to play. Every token unlocks games streams.</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>Top up tokens to play. Every token unlocks games streams.</p>
+
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(0, 243, 255, 0.08)', border: '1px solid rgba(0, 243, 255, 0.2)', padding: '0.4rem 0.8rem', borderRadius: '6px', marginBottom: '2rem', fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
+                  <Clock size={16} />
+                  <span>Global Rate: <strong>1 Token Key</strong> = <strong>{systemSettings.sessionDurationMinutes || 15} Minutes</strong> Game Streaming</span>
+                </div>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {packages.map((pkg) => (
@@ -1555,6 +1706,75 @@ function App() {
                     </div>
                   </div>
 
+                  {/* Hardware Specification Configuration */}
+                  <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.75rem', fontWeight: 600 }}>
+                      Hardware Configuration Specs
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Server Region / Location</label>
+                      <select 
+                        className="form-input" 
+                        value={newMachineRegion}
+                        style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                        onChange={(e) => setNewMachineRegion(e.target.value)}
+                      >
+                        <option value="Tokyo - Asia East">Tokyo - Asia East</option>
+                        <option value="Seattle - US West">Seattle - US West</option>
+                        <option value="Frankfurt - EU Central">Frankfurt - EU Central</option>
+                        <option value="London - EU West">London - EU West</option>
+                        <option value="Singapore - SE Asia">Singapore - SE Asia</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">CPU / Processor</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. AMD Zen 2 8-Core"
+                          value={newMachineCpu}
+                          onChange={(e) => setNewMachineCpu(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">GPU / Graphics Card</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. RTX 4090 24GB"
+                          value={newMachineGpu}
+                          onChange={(e) => setNewMachineGpu(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">RAM / Memory</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. 16GB GDDR6"
+                          value={newMachineRam}
+                          onChange={(e) => setNewMachineRam(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Max Resolution / FPS</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. 4K @ 120 FPS"
+                          value={newMachineResolution}
+                          onChange={(e) => setNewMachineResolution(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <button type="submit" className="btn btn-cyan" style={{ width: '100%', marginTop: '0.5rem', padding: '0.75rem' }}>
                     Link Node
                   </button>
@@ -1623,6 +1843,148 @@ function App() {
                     ))
                   )}
                 </div>
+              </div>
+
+            </div>
+
+            {/* Split layout 2: Token Package Pricing & Session Play Time Configurator */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
+              
+              {/* Session Duration Configurator */}
+              <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
+                <h4 style={{ fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Clock size={18} color="var(--accent-cyan)" />
+                  Per-Token Play Duration Configurator
+                </h4>
+
+                <form onSubmit={handleUpdateSessionDuration}>
+                  {settingsActionError && (
+                    <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                      {settingsActionError}
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="form-label">Stream Playing Duration per Token (Minutes)</label>
+                    <input 
+                      type="number" 
+                      className="form-input form-input-cyan" 
+                      min="1"
+                      max="480"
+                      value={configDurationMinutes}
+                      onChange={(e) => setConfigDurationMinutes(e.target.value)}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Current Rate: <strong>1 Token Key = {systemSettings.sessionDurationMinutes || 15} Minutes</strong> stream session
+                    </span>
+                  </div>
+
+                  <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
+                    Save Play Time Rate
+                  </button>
+                </form>
+              </div>
+
+              {/* Token Package Manager */}
+              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                <h4 style={{ fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Coins size={18} color="var(--accent-purple)" />
+                  Key Shop Pricing & Package Manager
+                </h4>
+
+                <form onSubmit={handleCreatePackage} style={{ marginBottom: '2rem' }}>
+                  {packageActionError && (
+                    <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                      {packageActionError}
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="form-label">Package Title</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="e.g. Weekend Warrior Pack"
+                      value={newPkgTitle}
+                      onChange={(e) => setNewPkgTitle(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Token Keys Count</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        min="1"
+                        value={newPkgTokens}
+                        onChange={(e) => setNewPkgTokens(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Price ($ USD)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="form-input" 
+                        min="0.50"
+                        value={newPkgPrice}
+                        onChange={(e) => setNewPkgPrice(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Package Subtitle / Description</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="e.g. Best for long gaming sessions"
+                      value={newPkgDesc}
+                      onChange={(e) => setNewPkgDesc(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                    <input 
+                      type="checkbox" 
+                      id="pkgRecommended" 
+                      checked={newPkgRecommended}
+                      onChange={(e) => setNewPkgRecommended(e.target.checked)}
+                    />
+                    <label htmlFor="pkgRecommended" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                      Highlight as "Best Value / Recommended"
+                    </label>
+                  </div>
+
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+                    Add Token Package
+                  </button>
+                </form>
+
+                {/* Package Listing with Delete Action */}
+                <h4 style={{ fontSize: '0.9rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                  Active Shop Packages
+                </h4>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '250px', overflowY: 'auto' }}>
+                  {packages.map((pkg) => (
+                    <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#fff' }}>
+                          {pkg.title} {pkg.recommended && <span style={{ fontSize: '0.65rem', color: 'var(--accent-purple)', background: 'rgba(138,43,226,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>★ Recommended</span>}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {pkg.tokens} Keys | ${pkg.price?.toFixed(2)}
+                        </div>
+                      </div>
+                      <button onClick={() => handleDeletePackage(pkg.id)} className="btn btn-secondary" style={{ padding: '0.4rem', border: 'none' }} title="Delete Package">
+                        <Trash2 size={16} color="var(--status-danger)" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
               </div>
 
             </div>
