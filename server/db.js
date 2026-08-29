@@ -60,10 +60,26 @@ const SessionSchema = new mongoose.Schema({
   endReason: { type: String, default: null }
 }, { timestamps: true });
 
+const PackageSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  tokens: { type: Number, required: true },
+  price: { type: Number, required: true },
+  desc: { type: String, default: '' },
+  recommended: { type: Boolean, default: false }
+}, { timestamps: true });
+
+const SettingsSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true, default: 'global' },
+  sessionDurationMinutes: { type: Number, default: 15 } // duration in minutes per token session
+}, { timestamps: true });
+
 export const User = mongoose.model('User', UserSchema);
 export const Machine = mongoose.model('Machine', MachineSchema);
 export const Transaction = mongoose.model('Transaction', TransactionSchema);
 export const Session = mongoose.model('Session', SessionSchema);
+export const Package = mongoose.model('Package', PackageSchema);
+export const Settings = mongoose.model('Settings', SettingsSchema);
 
 // Helper to generate IDs
 const generateId = (prefix) => `${prefix}_${Math.random().toString(36).substr(2, 9)}`;
@@ -181,6 +197,22 @@ const seedDb = async () => {
       ]);
       console.log('Default gaming nodes seeded in MongoDB Atlas.');
     }
+
+    const packageCount = await Package.countDocuments();
+    if (packageCount === 0) {
+      await Package.create([
+        { id: 'pkg_starter', title: 'Casual Pack', tokens: 5, price: 5.00, desc: 'Perfect for a quick session.', recommended: false },
+        { id: 'pkg_pro', title: 'Gamer Pack', tokens: 12, price: 10.00, desc: 'Most Popular. Extra play time.', recommended: true },
+        { id: 'pkg_elite', title: 'Pro Streamer Pack', tokens: 30, price: 20.00, desc: 'Ultimate package for hardcore gamers.', recommended: false }
+      ]);
+      console.log('Default token packages seeded in MongoDB Atlas.');
+    }
+
+    const settingsCount = await Settings.countDocuments();
+    if (settingsCount === 0) {
+      await Settings.create({ key: 'global', sessionDurationMinutes: 15 });
+      console.log('Default system settings seeded in MongoDB Atlas.');
+    }
   } catch (err) {
     console.error('Error seeding MongoDB Atlas database:', err);
   }
@@ -189,6 +221,50 @@ const seedDb = async () => {
 // --- ASYNC DATABASE OPERATIONS ---
 
 export const dbOps = {
+  // Token Packages
+  getPackages: async () => {
+    return await Package.find().lean();
+  },
+
+  createPackage: async (pkgData) => {
+    const newPkg = await Package.create({
+      id: generateId('pkg'),
+      title: pkgData.title || 'Custom Pack',
+      tokens: parseInt(pkgData.tokens) || 5,
+      price: parseFloat(pkgData.price) || 5.00,
+      desc: pkgData.desc || '',
+      recommended: Boolean(pkgData.recommended)
+    });
+    return newPkg.toObject();
+  },
+
+  updatePackage: async (id, updates) => {
+    const updated = await Package.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean();
+    if (!updated) throw new Error('Package not found');
+    return updated;
+  },
+
+  deletePackage: async (id) => {
+    const res = await Package.findOneAndDelete({ id });
+    if (!res) throw new Error('Package not found');
+    return true;
+  },
+
+  // Settings & Session Duration
+  getSettings: async () => {
+    let settings = await Settings.findOne({ key: 'global' }).lean();
+    if (!settings) {
+      const created = await Settings.create({ key: 'global', sessionDurationMinutes: 15 });
+      settings = created.toObject();
+    }
+    return settings;
+  },
+
+  updateSettings: async (updates) => {
+    const updated = await Settings.findOneAndUpdate({ key: 'global' }, { $set: updates }, { new: true, upsert: true }).lean();
+    return updated;
+  },
+
   // Users
   getUsers: async () => {
     return await User.find().lean();

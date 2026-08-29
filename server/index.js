@@ -164,6 +164,73 @@ app.get('/api/wallet/transactions', authenticateToken, async (req, res) => {
   }
 });
 
+// --- TOKEN PACKAGES API ROUTES ---
+
+app.get('/api/packages', async (req, res) => {
+  try {
+    const pkgs = await dbOps.getPackages();
+    res.json(pkgs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/packages', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const pkg = await dbOps.createPackage(req.body);
+    io.emit('packages_update', await dbOps.getPackages());
+    res.status(201).json(pkg);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/packages/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const updated = await dbOps.updatePackage(req.params.id, req.body);
+    io.emit('packages_update', await dbOps.getPackages());
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/packages/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await dbOps.deletePackage(req.params.id);
+    io.emit('packages_update', await dbOps.getPackages());
+    res.json({ message: 'Package deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- SYSTEM SETTINGS API ROUTES ---
+
+app.get('/api/settings', async (req, res) => {
+  try {
+    const settings = await dbOps.getSettings();
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/settings', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { sessionDurationMinutes } = req.body;
+    const duration = parseInt(sessionDurationMinutes);
+    if (!duration || duration <= 0) {
+      return res.status(400).json({ error: 'Invalid session duration' });
+    }
+    const updated = await dbOps.updateSettings({ sessionDurationMinutes: duration });
+    io.emit('settings_update', updated);
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- MACHINES API ROUTES ---
 
 app.get('/api/machines', async (req, res) => {
@@ -356,7 +423,10 @@ app.post('/api/machines/:id/play', authenticateToken, async (req, res) => {
       currentUsername: user.username
     });
 
-    const sess = await dbOps.createSession(userId, machineId, SESSION_TIME_LIMIT);
+    const settings = await dbOps.getSettings();
+    const sessionDurationSec = (settings?.sessionDurationMinutes || 15) * 60;
+
+    const sess = await dbOps.createSession(userId, machineId, sessionDurationSec);
 
     io.emit('machines_update', await dbOps.getMachines());
     io.emit('admin_sessions_update');
@@ -365,7 +435,7 @@ app.post('/api/machines/:id/play', authenticateToken, async (req, res) => {
       message: 'Session initiated successfully',
       sessionId: sess.id,
       tokenBalance: user.tokenBalance - tokenCost,
-      durationSec: SESSION_TIME_LIMIT
+      durationSec: sessionDurationSec
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -408,7 +478,8 @@ io.on('connection', (socket) => {
       socket.emit('play_chat_message', { sender: 'System', text: `Console connected successfully to ${machine.name}.` });
       socket.emit('play_chat_message', { sender: 'System', text: `Inputs mapped: WASD / Arrow Keys for joystick, J/K/L/Space for actions.` });
 
-      let secondsLeft = SESSION_TIME_LIMIT;
+      const settings = await dbOps.getSettings();
+      let secondsLeft = session.durationSec || (settings?.sessionDurationMinutes || 15) * 60;
 
       const timer = setInterval(async () => {
         secondsLeft--;
