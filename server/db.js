@@ -3,10 +3,12 @@ import bcrypt from 'bcryptjs';
 import dns from 'dns';
 
 // Fix DNS SRV lookup issues on Windows networks
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch (e) {
-  // fallback if system restricts custom DNS
+if (process.platform === 'win32') {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch (e) {
+    // fallback if system restricts custom DNS
+  }
 }
 
 // --- MONGOOSE SCHEMAS & MODELS ---
