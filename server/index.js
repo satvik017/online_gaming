@@ -46,6 +46,15 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+// --- HEALTH CHECK ROUTE ---
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'Vortex Play Backend API & WebSockets Server',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // --- AUTH API ROUTES ---
 
 app.post('/api/auth/register', async (req, res) => {
