@@ -71,6 +71,11 @@ function App() {
   const [newMachineIp, setNewMachineIp] = useState('192.168.1.100');
   const [newMachineGame, setNewMachineGame] = useState('Elden Ring');
   const [newMachineCost, setNewMachineCost] = useState(1);
+  const [newMachineCpu, setNewMachineCpu] = useState('Custom AMD Zen 2 8-Core');
+  const [newMachineGpu, setNewMachineGpu] = useState('RDNA 2 Engine (10.28 TFLOPS)');
+  const [newMachineRam, setNewMachineRam] = useState('16GB GDDR6 Unified');
+  const [newMachineResolution, setNewMachineResolution] = useState('4K @ 60 FPS');
+  const [newMachineRegion, setNewMachineRegion] = useState('Tokyo - Asia East');
   const [adminActionError, setAdminActionError] = useState('');
 
   // Sockets & Refs
@@ -670,14 +675,19 @@ function App() {
           type: newMachineType,
           ipAddress: newMachineIp,
           activeGame: newMachineGame,
-          tokenCostPerSession: newMachineCost
+          tokenCostPerSession: newMachineCost,
+          cpuSpec: newMachineCpu,
+          gpuSpec: newMachineGpu,
+          ramSpec: newMachineRam,
+          resolutionSpec: newMachineResolution,
+          regionTag: newMachineRegion
         })
       });
 
       setNewMachineName('');
       setNewMachineGame('');
       fetchAdminData();
-      alert('Node added and linked to virtual cluster.');
+      alert('Node added and linked to virtual cluster with hardware specs.');
     } catch (err) {
       setAdminActionError(err.message);
     }
@@ -1004,10 +1014,31 @@ function App() {
                         </div>
                       </div>
 
-                      {/* Device Title */}
+                      {/* Device Title & Region */}
                       <h4 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.25rem' }}>{machine.name}</h4>
-                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: '1.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: '0.75rem' }}>
                         <span>IP: {machine.ipAddress}</span>
+                        {machine.regionTag && (
+                          <span style={{ color: 'var(--accent-cyan)', background: 'rgba(0, 243, 255, 0.08)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                            📍 {machine.regionTag}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Hardware Specs Grid Badges */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginBottom: '1.25rem', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#fff' }}>GPU:</strong> {machine.gpuSpec || 'Ray-Tracing GPU'}
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#fff' }}>RAM:</strong> {machine.ramSpec || '16GB High-Speed'}
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#fff' }}>CPU:</strong> {machine.cpuSpec || '8-Core Processor'}
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                          <strong style={{ color: '#fff' }}>MAX:</strong> {machine.resolutionSpec || '4K @ 60 FPS'}
+                        </div>
                       </div>
 
                       {/* Current Game */}
@@ -1552,6 +1583,75 @@ function App() {
                         value={newMachineGame}
                         onChange={(e) => setNewMachineGame(e.target.value)}
                       />
+                    </div>
+                  </div>
+
+                  {/* Hardware Specification Configuration */}
+                  <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.75rem', fontWeight: 600 }}>
+                      Hardware Configuration Specs
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Server Region / Location</label>
+                      <select 
+                        className="form-input" 
+                        value={newMachineRegion}
+                        style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                        onChange={(e) => setNewMachineRegion(e.target.value)}
+                      >
+                        <option value="Tokyo - Asia East">Tokyo - Asia East</option>
+                        <option value="Seattle - US West">Seattle - US West</option>
+                        <option value="Frankfurt - EU Central">Frankfurt - EU Central</option>
+                        <option value="London - EU West">London - EU West</option>
+                        <option value="Singapore - SE Asia">Singapore - SE Asia</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">CPU / Processor</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. AMD Zen 2 8-Core"
+                          value={newMachineCpu}
+                          onChange={(e) => setNewMachineCpu(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">GPU / Graphics Card</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. RTX 4090 24GB"
+                          value={newMachineGpu}
+                          onChange={(e) => setNewMachineGpu(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">RAM / Memory</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. 16GB GDDR6"
+                          value={newMachineRam}
+                          onChange={(e) => setNewMachineRam(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Max Resolution / FPS</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          placeholder="e.g. 4K @ 120 FPS"
+                          value={newMachineResolution}
+                          onChange={(e) => setNewMachineResolution(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
 

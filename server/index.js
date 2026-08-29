@@ -177,7 +177,7 @@ app.get('/api/machines', async (req, res) => {
 
 // Create Machine (Admin)
 app.post('/api/machines', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, type, ipAddress, activeGame, tokenCostPerSession } = req.body;
+  const { name, type, ipAddress, activeGame, tokenCostPerSession, cpuSpec, gpuSpec, ramSpec, resolutionSpec, regionTag } = req.body;
   if (!name) return res.status(400).json({ error: 'Machine name is required' });
 
   try {
@@ -187,6 +187,11 @@ app.post('/api/machines', authenticateToken, requireAdmin, async (req, res) => {
       ipAddress,
       activeGame,
       tokenCostPerSession: parseInt(tokenCostPerSession) || 1,
+      cpuSpec,
+      gpuSpec,
+      ramSpec,
+      resolutionSpec,
+      regionTag,
       status: 'available'
     });
     io.emit('machines_update', await dbOps.getMachines());

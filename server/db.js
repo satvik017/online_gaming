@@ -30,6 +30,11 @@ const MachineSchema = new mongoose.Schema({
   ipAddress: { type: String, default: '127.0.0.1' },
   activeGame: { type: String, default: 'Lobby Menu' },
   tokenCostPerSession: { type: Number, default: 1 },
+  cpuSpec: { type: String, default: 'High-Performance Zen/Core Processor' },
+  gpuSpec: { type: String, default: 'Custom Ray-Tracing GPU' },
+  ramSpec: { type: String, default: '16GB High-Speed RAM' },
+  resolutionSpec: { type: String, default: '4K @ 60 FPS' },
+  regionTag: { type: String, default: 'Tokyo - Asia East' },
   currentUserId: { type: String, default: null },
   currentUsername: { type: String, default: null }
 }, { timestamps: true });
@@ -117,6 +122,11 @@ const seedDb = async () => {
           ipAddress: '192.168.1.100',
           activeGame: 'Gran Turismo 7',
           tokenCostPerSession: 1,
+          cpuSpec: 'Custom AMD Zen 2 8-Core',
+          gpuSpec: 'RDNA 2 Engine (10.28 TFLOPS)',
+          ramSpec: '16GB GDDR6 Unified',
+          resolutionSpec: '4K @ 60 FPS',
+          regionTag: 'Tokyo - Asia East',
           currentUserId: null,
           currentUsername: null
         },
@@ -128,6 +138,11 @@ const seedDb = async () => {
           ipAddress: '192.168.1.101',
           activeGame: 'Elden Ring: Shadow of the Erdtree',
           tokenCostPerSession: 1,
+          cpuSpec: 'Custom AMD Zen 2 8-Core',
+          gpuSpec: 'RDNA 2 Engine (10.28 TFLOPS)',
+          ramSpec: '16GB GDDR6 Unified',
+          resolutionSpec: '4K @ 60 FPS',
+          regionTag: 'Tokyo - Asia East',
           currentUserId: null,
           currentUsername: null
         },
@@ -139,6 +154,11 @@ const seedDb = async () => {
           ipAddress: '192.168.2.50',
           activeGame: 'Forza Horizon 5',
           tokenCostPerSession: 1,
+          cpuSpec: 'Custom AMD Zen 2 8-Core (3.8 GHz)',
+          gpuSpec: 'RDNA 2 Engine (12 TFLOPS)',
+          ramSpec: '16GB GDDR6',
+          resolutionSpec: '4K @ 120 FPS',
+          regionTag: 'Seattle - US West',
           currentUserId: null,
           currentUsername: null
         },
@@ -150,6 +170,11 @@ const seedDb = async () => {
           ipAddress: '10.0.0.12',
           activeGame: 'Cyberpunk 2077 (Path Tracing)',
           tokenCostPerSession: 2,
+          cpuSpec: 'Intel Core i9-14900K (24-Core)',
+          gpuSpec: 'NVIDIA GeForce RTX 4090 24GB',
+          ramSpec: '64GB DDR5 6000MHz',
+          resolutionSpec: '4K @ 144 FPS (DLSS 3.5)',
+          regionTag: 'Frankfurt - EU Central',
           currentUserId: null,
           currentUsername: null
         }
@@ -223,6 +248,11 @@ export const dbOps = {
       ipAddress: machineData.ipAddress || '127.0.0.1',
       activeGame: machineData.activeGame || 'Lobby Menu',
       tokenCostPerSession: parseInt(machineData.tokenCostPerSession) || 1,
+      cpuSpec: machineData.cpuSpec || 'High-Performance Zen/Core Processor',
+      gpuSpec: machineData.gpuSpec || 'Custom Ray-Tracing GPU',
+      ramSpec: machineData.ramSpec || '16GB High-Speed RAM',
+      resolutionSpec: machineData.resolutionSpec || '4K @ 60 FPS',
+      regionTag: machineData.regionTag || 'Tokyo - Asia East',
       currentUserId: null,
       currentUsername: null
     });
