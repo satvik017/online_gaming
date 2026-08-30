@@ -231,6 +231,133 @@ app.put('/api/settings', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// --- CATEGORIES & GAMES CATALOG API ROUTES ---
+
+app.get('/api/categories', async (req, res) => {
+  try {
+    const categories = await dbOps.getCategories();
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/categories', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const category = await dbOps.createCategory(req.body);
+    io.emit('categories_update', await dbOps.getCategories());
+    res.status(201).json(category);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/games', async (req, res) => {
+  try {
+    const games = await dbOps.getGames();
+    res.json(games);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/games', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const game = await dbOps.createGame(req.body);
+    io.emit('games_update', await dbOps.getGames());
+    res.status(201).json(game);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/games/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const updated = await dbOps.updateGame(req.params.id, req.body);
+    io.emit('games_update', await dbOps.getGames());
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/games/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await dbOps.deleteGame(req.params.id);
+    io.emit('games_update', await dbOps.getGames());
+    res.json({ message: 'Game deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin Users List Route
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const users = await dbOps.getUsersList();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// REST route to initiate play for a Game
+app.post('/api/games/:id/play', authenticateToken, async (req, res) => {
+  const gameId = req.params.id;
+  const userId = req.user.id;
+
+  try {
+    const user = await dbOps.getUserById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const game = await dbOps.getGameById(gameId);
+    if (!game) return res.status(404).json({ error: 'Game not found in catalog' });
+
+    // Find available machine matching game category
+    const machines = await dbOps.getMachines();
+    const availableMachine = machines.find(m => m.status === 'available' && (m.type === game.categoryId || m.type.includes(game.categoryId)));
+
+    if (!availableMachine) {
+      return res.status(400).json({ error: `All ${game.categoryId.toUpperCase()} gaming stations are currently occupied. Please wait a moment.` });
+    }
+
+    const tokenCost = game.tokenCost || availableMachine.tokenCostPerSession || 1;
+    if (user.tokenBalance < tokenCost) {
+      return res.status(400).json({ error: 'Insufficient token balance. Please purchase more tokens.' });
+    }
+
+    await dbOps.updateUserTokens(userId, -tokenCost);
+    await dbOps.createTransaction(userId, 'spend', tokenCost, 0, 'completed');
+
+    await dbOps.updateMachine(availableMachine.id, {
+      status: 'in-use',
+      activeGame: game.title,
+      currentUserId: userId,
+      currentUsername: user.username
+    });
+
+    const settings = await dbOps.getSettings();
+    const sessionDurationSec = (settings?.sessionDurationMinutes || 15) * 60;
+
+    const sess = await dbOps.createSession(userId, availableMachine.id, sessionDurationSec);
+
+    io.emit('machines_update', await dbOps.getMachines());
+    io.emit('admin_sessions_update');
+
+    res.json({
+      message: 'Game session initiated successfully',
+      sessionId: sess.id,
+      machineId: availableMachine.id,
+      machineName: availableMachine.name,
+      gameTitle: game.title,
+      tokenBalance: user.tokenBalance - tokenCost,
+      durationSec: sessionDurationSec
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- MACHINES API ROUTES ---
 
 app.get('/api/machines', async (req, res) => {
