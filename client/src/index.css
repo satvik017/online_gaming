@@ -394,3 +394,25 @@ p {
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
 }
+
+/* Responsive Mobile Navigation Helper Classes */
+.desktop-only {
+  display: flex !important;
+}
+.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+  
+  /* Ensure header container scales nicely on small screens */
+  header {
+    margin: 0.5rem !important;
+  }
+}

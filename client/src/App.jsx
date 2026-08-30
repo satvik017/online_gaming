@@ -38,7 +38,9 @@ import {
   Star,
   Flame,
   Globe,
-  ArrowRight
+  ArrowRight,
+  Menu,
+  X
 } from 'lucide-react';
 import { uploadGameCoverToSupabase, isSupabaseConfigured } from './supabase.js';
 
@@ -91,6 +93,7 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem('vortex_token') || '');
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('landing'); // landing, login, register, lobby, wallet, play, admin
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [homeCategoryFilter, setHomeCategoryFilter] = useState('all'); // all, ps5, xbox, pc
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -1087,216 +1090,358 @@ function App() {
   return (
     <div className="app-container">
       {/* Header / Navbar */}
-      <header className="glass-panel" style={{ margin: '1rem', borderBottom: '1px solid var(--border-color)', borderRadius: '12px', zIndex: 100 }}>
+      <header className="glass-panel" style={{ margin: '1rem', borderBottom: '1px solid var(--border-color)', borderRadius: '12px', zIndex: 100, position: 'relative' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           
           {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => setCurrentView(token ? 'lobby' : 'landing')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => { setCurrentView(token ? 'lobby' : 'landing'); setMobileMenuOpen(false); }}>
             <img 
               src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
               alt="VORTEX PLAY Logo" 
               style={{ height: '42px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}
               className="hover-glitch"
             />
-            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.06em', margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '0.06em', margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <span style={{ color: 'var(--logo-vortex)', fontWeight: 900 }}>VORTEX</span>
               <span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>PLAY</span>
             </h1>
           </div>
 
-          {/* Navigation Links */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            {token && (
-              <>
-                <button 
-                  onClick={() => setCurrentView('lobby')} 
-                  className={`btn ${currentView === 'lobby' || currentView === 'play' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                >
-                  Console Lobby
-                </button>
-                <button 
-                  onClick={() => setCurrentView('wallet')} 
-                  className={`btn ${currentView === 'wallet' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', gap: '0.4rem' }}
-                >
-                  <Coins size={16} />
-                  Token Shop
-                </button>
-                {user?.isAdmin && (
+          {/* DESKTOP NAVIGATION LINKS & USER PROFILE */}
+          <div className="desktop-only" style={{ alignItems: 'center', gap: '1.5rem' }}>
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {token && (
+                <>
                   <button 
-                    onClick={() => setCurrentView('admin')} 
-                    className={`btn ${currentView === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: 'var(--accent-purple)' }}
+                    onClick={() => setCurrentView('lobby')} 
+                    className={`btn ${currentView === 'lobby' || currentView === 'play' ? 'btn-cyan' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
                   >
-                    <Shield size={16} />
-                    Admin
+                    Console Lobby
                   </button>
-                )}
-              </>
-            )}
-          </nav>
-
-          {/* User Section / Auth State */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            {user ? (
-              <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  {/* Wallet Token Pill */}
-                  <div 
+                  <button 
                     onClick={() => setCurrentView('wallet')} 
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.2)', padding: '0.4rem 0.85rem', borderRadius: '20px', cursor: 'pointer' }}
+                    className={`btn ${currentView === 'wallet' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', gap: '0.4rem' }}
                   >
-                    <Coins size={16} color="var(--accent-cyan)" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
-                      {user.tokenBalance} Keys
-                    </span>
-                  </div>
-
-                  {/* Animal Avatar Button */}
-                  <button 
-                    onClick={() => setShowProfileMenu((prev) => !prev)} 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.5rem', 
-                      background: 'var(--bg-tertiary)', 
-                      border: '1px solid var(--border-color)', 
-                      padding: '0.3rem 0.6rem 0.3rem 0.3rem', 
-                      borderRadius: '30px', 
-                      cursor: 'pointer',
-                      outline: 'none'
-                    }}
-                  >
-                    <div style={{ 
-                      width: '34px', 
-                      height: '34px', 
-                      borderRadius: '50%', 
-                      background: getAnimalAvatar(user.username).color, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      fontSize: '1.2rem',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                    }}>
-                      {getAnimalAvatar(user.username).emoji}
-                    </div>
-                    <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
-                      @{user.username}
-                    </span>
-                    <ChevronDown size={14} color="var(--text-muted)" />
+                    <Coins size={16} />
+                    Token Shop
                   </button>
-                </div>
+                  {user?.isAdmin && (
+                    <button 
+                      onClick={() => setCurrentView('admin')} 
+                      className={`btn ${currentView === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: 'var(--accent-purple)' }}
+                    >
+                      <Shield size={16} />
+                      Admin
+                    </button>
+                  )}
+                </>
+              )}
+            </nav>
 
-                {/* Profile Dropdown Menu */}
-                {showProfileMenu && (
-                  <div className="animated-fade glass-panel" style={{ 
-                    position: 'absolute', 
-                    top: '52px', 
-                    right: 0, 
-                    width: '260px', 
-                    padding: '1rem', 
-                    zIndex: 1000, 
-                    borderRadius: '12px',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-                    border: '1px solid var(--border-color)'
-                  }}>
-                    {/* User Summary Header */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.85rem', marginBottom: '0.85rem', borderBottom: '1px solid var(--border-color)' }}>
+            {/* Desktop Profile & Auth */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {user ? (
+                <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {/* Wallet Token Pill */}
+                    <div 
+                      onClick={() => setCurrentView('wallet')} 
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.2)', padding: '0.4rem 0.85rem', borderRadius: '20px', cursor: 'pointer' }}
+                    >
+                      <Coins size={16} color="var(--accent-cyan)" />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                        {user.tokenBalance} Keys
+                      </span>
+                    </div>
+
+                    {/* Animal Avatar Button */}
+                    <button 
+                      onClick={() => setShowProfileMenu((prev) => !prev)} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.5rem', 
+                        background: 'var(--bg-tertiary)', 
+                        border: '1px solid var(--border-color)', 
+                        padding: '0.3rem 0.6rem 0.3rem 0.3rem', 
+                        borderRadius: '30px', 
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
                       <div style={{ 
-                        width: '42px', 
-                        height: '42px', 
+                        width: '34px', 
+                        height: '34px', 
                         borderRadius: '50%', 
                         background: getAnimalAvatar(user.username).color, 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
-                        fontSize: '1.5rem'
+                        fontSize: '1.2rem',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                       }}>
                         {getAnimalAvatar(user.username).emoji}
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>@{user.username}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 600, textTransform: 'uppercase' }}>
-                          {getAnimalAvatar(user.username).name} • {user.isAdmin ? 'Super Admin' : 'Player Pilot'}
+                      <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                        @{user.username}
+                      </span>
+                      <ChevronDown size={14} color="var(--text-muted)" />
+                    </button>
+                  </div>
+
+                  {/* Profile Dropdown Menu */}
+                  {showProfileMenu && (
+                    <div className="animated-fade glass-panel" style={{ 
+                      position: 'absolute', 
+                      top: '52px', 
+                      right: 0, 
+                      width: '260px', 
+                      padding: '1rem', 
+                      zIndex: 1000, 
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                      border: '1px solid var(--border-color)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.85rem', marginBottom: '0.85rem', borderBottom: '1px solid var(--border-color)' }}>
+                        <div style={{ 
+                          width: '42px', 
+                          height: '42px', 
+                          borderRadius: '50%', 
+                          background: getAnimalAvatar(user.username).color, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '1.5rem'
+                        }}>
+                          {getAnimalAvatar(user.username).emoji}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>@{user.username}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 600, textTransform: 'uppercase' }}>
+                            {getAnimalAvatar(user.username).name} • {user.isAdmin ? 'Super Admin' : 'Player Pilot'}
+                          </div>
                         </div>
                       </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <button 
+                          onClick={() => toggleTheme()}
+                          className="btn btn-secondary"
+                          style={{ width: '100%', justifyContent: 'space-between', padding: '0.6rem 0.85rem', fontSize: '0.8rem' }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {theme === 'light' ? <Sun size={15} color="#d97706" /> : <Moon size={15} color="var(--accent-purple)" />}
+                            Theme Mode
+                          </span>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
+                            {theme === 'light' ? 'Light ☀️' : 'Dark 🌙'}
+                          </span>
+                        </button>
+
+                        <button 
+                          onClick={() => { setCurrentView('wallet'); setShowProfileMenu(false); }}
+                          className="btn btn-secondary"
+                          style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem' }}
+                        >
+                          <Coins size={15} color="var(--accent-cyan)" />
+                          Tokens & Key Shop
+                        </button>
+
+                        <button 
+                          onClick={() => { setShowEditProfileModal(true); setShowProfileMenu(false); }}
+                          className="btn btn-secondary"
+                          style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem' }}
+                        >
+                          <Settings size={15} color="var(--accent-purple)" />
+                          Edit Profile Settings
+                        </button>
+
+                        <button 
+                          onClick={() => { setShowProfileMenu(false); handleLogout(); }}
+                          className="btn btn-secondary"
+                          style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem', color: 'var(--status-danger)', borderColor: 'rgba(225, 29, 72, 0.2)' }}
+                        >
+                          <LogOut size={15} color="var(--status-danger)" />
+                          Sign Out
+                        </button>
+                      </div>
                     </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button onClick={() => setCurrentView('login')} className="btn btn-secondary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}>
+                    Sign In
+                  </button>
+                  <button onClick={() => setCurrentView('register')} className="btn btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}>
+                    Register
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
-                    {/* Dropdown Options */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      {/* Theme Toggle Button */}
-                      <button 
-                        onClick={() => {
-                          toggleTheme();
-                        }}
-                        className="btn btn-secondary"
-                        style={{ width: '100%', justifyContent: 'space-between', padding: '0.6rem 0.85rem', fontSize: '0.8rem' }}
-                      >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          {theme === 'light' ? <Sun size={15} color="#d97706" /> : <Moon size={15} color="var(--accent-purple)" />}
-                          Theme Mode
-                        </span>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
-                          {theme === 'light' ? 'Light ☀️' : 'Dark 🌙'}
-                        </span>
-                      </button>
-
-                      {/* Token Settings / Key Shop */}
-                      <button 
-                        onClick={() => {
-                          setCurrentView('wallet');
-                          setShowProfileMenu(false);
-                        }}
-                        className="btn btn-secondary"
-                        style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem' }}
-                      >
-                        <Coins size={15} color="var(--accent-cyan)" />
-                        Tokens & Key Shop
-                      </button>
-
-                      {/* Edit Profile Settings */}
-                      <button 
-                        onClick={() => {
-                          setShowEditProfileModal(true);
-                          setShowProfileMenu(false);
-                        }}
-                        className="btn btn-secondary"
-                        style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem' }}
-                      >
-                        <Settings size={15} color="var(--accent-purple)" />
-                        Edit Profile Settings
-                      </button>
-
-                      {/* Logout */}
-                      <button 
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          handleLogout();
-                        }}
-                        className="btn btn-secondary"
-                        style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem', color: 'var(--status-danger)', borderColor: 'rgba(225, 29, 72, 0.2)' }}
-                      >
-                        <LogOut size={15} color="var(--status-danger)" />
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button onClick={() => setCurrentView('login')} className="btn btn-secondary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}>
-                  Sign In
-                </button>
-                <button onClick={() => setCurrentView('register')} className="btn btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}>
-                  Register
-                </button>
+          {/* MOBILE HAMBURGER TOGGLE BUTTON */}
+          <div className="mobile-only" style={{ alignItems: 'center', gap: '0.5rem' }}>
+            {user && (
+              <div 
+                onClick={() => { setCurrentView('wallet'); setMobileMenuOpen(false); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(2, 132, 199, 0.1)', border: '1px solid rgba(2, 132, 199, 0.3)', padding: '0.3rem 0.65rem', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)' }}
+              >
+                <Coins size={14} /> {user.tokenBalance}
               </div>
             )}
+
+            <button
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="btn btn-secondary"
+              style={{ padding: '0.45rem 0.65rem', borderRadius: '8px', outline: 'none' }}
+              aria-label="Toggle Navigation Menu"
+            >
+              {mobileMenuOpen ? <X size={22} color="var(--text-primary)" /> : <Menu size={22} color="var(--text-primary)" />}
+            </button>
           </div>
 
         </div>
+
+        {/* MOBILE DRAWER COLLAPSIBLE OVERLAY MENU */}
+        {mobileMenuOpen && (
+          <div className="mobile-only animated-fade glass-panel" style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            marginTop: '0.5rem',
+            padding: '1.25rem',
+            borderRadius: '12px',
+            flexDirection: 'column',
+            gap: '0.75rem',
+            zIndex: 1000,
+            boxShadow: '0 15px 35px rgba(0,0,0,0.3)',
+            border: '1px solid var(--border-color)'
+          }}>
+            {/* User Banner Header inside Mobile Menu */}
+            {user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.85rem', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ 
+                  width: '42px', 
+                  height: '42px', 
+                  borderRadius: '50%', 
+                  background: getAnimalAvatar(user.username).color, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: '1.4rem'
+                }}>
+                  {getAnimalAvatar(user.username).emoji}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>@{user.username}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                    {user.tokenBalance} Keys Balance • {user.isAdmin ? 'Super Admin' : 'Pilot'}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+                Navigation Lounge
+              </div>
+            )}
+
+            {/* Mobile Navigation Links */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <button 
+                onClick={() => { setCurrentView(token ? 'lobby' : 'landing'); setMobileMenuOpen(false); }}
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+              >
+                <Gamepad2 size={18} color="var(--accent-cyan)" />
+                {token ? 'Console Lobby' : 'Home Overview'}
+              </button>
+
+              {token && (
+                <>
+                  <button 
+                    onClick={() => { setCurrentView('wallet'); setMobileMenuOpen(false); }}
+                    className="btn btn-primary"
+                    style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                  >
+                    <Coins size={18} />
+                    Vortex Key Shop
+                  </button>
+
+                  {user?.isAdmin && (
+                    <button 
+                      onClick={() => { setCurrentView('admin'); setMobileMenuOpen(false); }}
+                      className="btn btn-cyan"
+                      style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                    >
+                      <Shield size={18} />
+                      Admin Control Console
+                    </button>
+                  )}
+
+                  <button 
+                    onClick={() => { setShowEditProfileModal(true); setMobileMenuOpen(false); }}
+                    className="btn btn-secondary"
+                    style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                  >
+                    <Settings size={18} color="var(--accent-purple)" />
+                    Edit Profile Settings
+                  </button>
+                </>
+              )}
+
+              {/* Theme Switcher Toggle inside Mobile Drawer */}
+              <button 
+                onClick={() => toggleTheme()}
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'space-between', padding: '0.65rem 1rem', fontSize: '0.85rem' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  {theme === 'light' ? <Sun size={18} color="#d97706" /> : <Moon size={18} color="var(--accent-purple)" />}
+                  Theme Mode
+                </span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
+                  {theme === 'light' ? 'Light ☀️' : 'Dark 🌙'}
+                </span>
+              </button>
+
+              {/* Guest / Auth Actions inside Mobile Drawer */}
+              {!token ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button 
+                    onClick={() => { setCurrentView('login'); setMobileMenuOpen(false); }}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.65rem', fontSize: '0.85rem' }}
+                  >
+                    Sign In
+                  </button>
+                  <button 
+                    onClick={() => { setCurrentView('register'); setMobileMenuOpen(false); }}
+                    className="btn btn-primary"
+                    style={{ padding: '0.65rem', fontSize: '0.85rem' }}
+                  >
+                    Register
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem', color: 'var(--status-danger)', borderColor: 'rgba(225, 29, 72, 0.2)', marginTop: '0.5rem' }}
+                >
+                  <LogOut size={18} color="var(--status-danger)" />
+                  Sign Out Account
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
       </header>
 
       {/* Main Container View Controller */}
