@@ -32,7 +32,13 @@ import {
   Key,
   Edit3,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Zap,
+  CheckCircle2,
+  Star,
+  Flame,
+  Globe,
+  ArrowRight
 } from 'lucide-react';
 import { uploadGameCoverToSupabase, isSupabaseConfigured } from './supabase.js';
 
@@ -85,6 +91,7 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem('vortex_token') || '');
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('landing'); // landing, login, register, lobby, wallet, play, admin
+  const [homeCategoryFilter, setHomeCategoryFilter] = useState('all'); // all, ps5, xbox, pc
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   
@@ -1295,65 +1302,330 @@ function App() {
       {/* Main Container View Controller */}
       <main style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '1rem 2rem' }}>
         
-        {/* LANDING PAGE (GUEST VIEW) */}
+        {/* LANDING PAGE / ATTRACTIVE HOME SCREEN */}
         {currentView === 'landing' && (
-          <div className="animated-fade" style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-            <div style={{ display: 'inline-flex', padding: '1rem', background: 'rgba(138, 43, 226, 0.1)', border: '1px solid rgba(138, 43, 226, 0.2)', borderRadius: '50%', marginBottom: '2rem' }}>
-              <img 
-                src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
-                alt="VORTEX PLAY Logo Emblem" 
-                style={{ width: '80px', height: '80px', objectFit: 'contain', filter: 'drop-shadow(0 4px 15px var(--accent-purple-glow))' }} 
-              />
-            </div>
+          <div className="animated-fade" style={{ padding: '2rem 0 4rem 0' }}>
             
-            <h2 className="text-glow-purple" style={{ fontSize: '3rem', marginBottom: '1rem', letterSpacing: '0.1em' }}>
-              PLAY CONSOLE GAMES <br />
-              <span style={{ color: 'var(--accent-cyan)' }}>VIRTUALIZED ONLINE</span>
-            </h2>
-            
-            <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 2.5rem auto' }}>
-              Access remote PS5 and high-end gaming hardware cluster endpoints instantly from any browser. Spend token keys to rent virtual nodes in real-time.
-            </p>
+            {/* HERO BANNER SECTION */}
+            <div style={{ textAlign: 'center', marginBottom: '4rem', position: 'relative' }}>
+              
+              {/* Badge Tag Pill */}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0, 243, 255, 0.08)', border: '1px solid rgba(0, 243, 255, 0.25)', padding: '0.4rem 1.25rem', borderRadius: '30px', marginBottom: '1.5rem', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                <Zap size={16} />
+                <span>Vortex WebRTC 4K Cloud Streaming Engine v2.4 Active</span>
+              </div>
+              
+              {/* Animated Supabase Logo Emblem */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ padding: '1rem', background: 'rgba(138, 43, 226, 0.08)', border: '1px solid rgba(138, 43, 226, 0.25)', borderRadius: '50%', boxShadow: '0 0 30px var(--accent-purple-glow)' }}>
+                  <img 
+                    src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
+                    alt="VORTEX PLAY Logo Emblem" 
+                    style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 4px 20px var(--accent-purple-glow))' }} 
+                  />
+                </div>
+              </div>
+              
+              {/* Main Headline */}
+              <h2 className="text-glow-purple" style={{ fontSize: '3.2rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '0.04em', lineHeight: 1.15, color: 'var(--text-primary)' }}>
+                NEXT-GEN CONSOLE GAMING <br />
+                <span style={{ color: 'var(--accent-cyan)' }}>VIRTUALIZED IN THE CLOUD</span>
+              </h2>
+              
+              <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', maxWidth: '720px', margin: '0 auto 2.5rem auto', lineHeight: 1.6 }}>
+                Stream top-tier PlayStation 5, Xbox Series X, and Liquid PC titles directly in your browser. Sub-millisecond latency, 4K ray tracing, and instant token-key access with zero downloads.
+              </p>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem' }}>
-              <button onClick={() => setCurrentView('register')} className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
-                Create Account
-              </button>
-              <button onClick={() => setCurrentView('login')} className="btn btn-secondary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
-                Join Lounge
-              </button>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '3.5rem' }}>
+                <button 
+                  onClick={() => setCurrentView(token ? 'lobby' : 'register')} 
+                  className="btn btn-primary" 
+                  style={{ padding: '1rem 2.5rem', fontSize: '1.1rem', gap: '0.6rem' }}
+                >
+                  <Play size={20} />
+                  {token ? 'Enter Console Lobby' : 'Start Free Cloud Trial'}
+                </button>
+
+                <button 
+                  onClick={() => {
+                    const el = document.getElementById('popular-games-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }} 
+                  className="btn btn-secondary" 
+                  style={{ padding: '1rem 2rem', fontSize: '1.1rem', gap: '0.6rem' }}
+                >
+                  <Flame size={20} color="var(--accent-purple)" />
+                  Explore Games Catalog
+                </button>
+
+                {token && (
+                  <button 
+                    onClick={() => setCurrentView('wallet')} 
+                    className="btn btn-cyan" 
+                    style={{ padding: '1rem 2rem', fontSize: '1.1rem', gap: '0.6rem' }}
+                  >
+                    <Coins size={20} />
+                    Buy Token Keys
+                  </button>
+                )}
+              </div>
+
+              {/* Live Performance Counter Ticker */}
+              <div className="glass-panel" style={{ padding: '1.25rem 2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', borderRadius: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
+                  <Zap size={24} color="var(--accent-cyan)" />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>&lt; 12 ms</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ultra-Low Latency Stream</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
+                  <Tv size={24} color="var(--accent-purple)" />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>4K @ 60 FPS</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Hardware Accelerated</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
+                  <Shield size={24} color="var(--status-success)" />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>99.99% Uptime</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>MongoDB Atlas Cloud Sync</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
+                  <Coins size={24} color="var(--accent-cyan)" />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>1 Token Key</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>= {systemSettings.sessionDurationMinutes || 15} Mins Streaming</div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            {/* Showcase Nodes */}
-            <div style={{ marginTop: '5rem' }}>
-              <h3 style={{ fontSize: '1.3rem', color: 'var(--text-muted)', marginBottom: '2rem', letterSpacing: '0.2em' }}>ACTIVE SERVER NODES</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ color: 'var(--accent-cyan)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>NODE: Tokyo_PS5_01</span>
-                    <span style={{ height: '8px', width: '8px', background: 'var(--status-success)', borderRadius: '50%', boxShadow: '0 0 8px var(--status-success)' }}></span>
-                  </div>
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>PS5 Pro Node</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>GT7, Elden Ring, Spiderman 2</p>
+            {/* DYNAMIC POPULAR GAMES SPOTLIGHT FROM DATABASE */}
+            <div id="popular-games-section" style={{ marginTop: '5rem', marginBottom: '5rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-purple)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
+                  <Flame size={18} /> Featured Library
                 </div>
-                <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ color: 'var(--accent-purple)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>NODE: Seattle_Xbx_01</span>
-                    <span style={{ height: '8px', width: '8px', background: 'var(--status-success)', borderRadius: '50%', boxShadow: '0 0 8px var(--status-success)' }}></span>
-                  </div>
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>Xbox Series X</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Forza Horizon 5, Halo Infinite</p>
+                <h3 style={{ fontSize: '2.2rem', color: 'var(--text-primary)', fontWeight: 800 }}>
+                  POPULAR CLOUD GAMES CATALOG
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '600px', margin: '0.5rem auto 0 auto' }}>
+                  Browse title categories hosted across live physical PS5 consoles, Xbox arrays, and liquid PC rigs.
+                </p>
+              </div>
+
+              {/* Category Filter Pills on Home Screen */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
+                <button
+                  onClick={() => setHomeCategoryFilter('all')}
+                  className={`btn ${homeCategoryFilter === 'all' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                >
+                  <Sparkles size={16} /> All Games ({games.length})
+                </button>
+                <button
+                  onClick={() => setHomeCategoryFilter('ps5')}
+                  className={`btn ${homeCategoryFilter === 'ps5' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                >
+                  <Tv size={16} /> PlayStation 5 ({games.filter(g => g.categoryId === 'ps5').length})
+                </button>
+                <button
+                  onClick={() => setHomeCategoryFilter('xbox')}
+                  className={`btn ${homeCategoryFilter === 'xbox' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                >
+                  <Monitor size={16} /> Xbox Series X ({games.filter(g => g.categoryId === 'xbox').length})
+                </button>
+                <button
+                  onClick={() => setHomeCategoryFilter('pc')}
+                  className={`btn ${homeCategoryFilter === 'pc' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                >
+                  <Cpu size={16} /> Liquid PC Rigs ({games.filter(g => g.categoryId === 'pc').length})
+                </button>
+              </div>
+
+              {/* Games Grid Display */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                {games
+                  .filter(g => homeCategoryFilter === 'all' || g.categoryId === homeCategoryFilter)
+                  .map((game) => {
+                    const catBadge = game.categoryId === 'ps5' ? 'PS5 PRO' : game.categoryId === 'xbox' ? 'XBOX SERIES X' : 'RTX 4090 PC';
+                    const catColor = game.categoryId === 'ps5' ? 'var(--accent-cyan)' : game.categoryId === 'xbox' ? 'var(--status-success)' : 'var(--accent-purple)';
+
+                    return (
+                      <div 
+                        key={game.id} 
+                        className="glass-panel" 
+                        style={{ 
+                          borderRadius: '14px', 
+                          overflow: 'hidden', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          textAlign: 'left',
+                          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                          border: '1px solid var(--border-color)'
+                        }}
+                      >
+                        {/* Cover Image Container */}
+                        <div style={{ position: 'relative', height: '170px', overflow: 'hidden', background: '#000' }}>
+                          <img 
+                            src={game.coverUrl} 
+                            alt={game.title} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          />
+
+                          {/* Category Badge Pill */}
+                          <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', border: `1px solid ${catColor}`, padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                            <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: catColor, fontWeight: 700 }}>
+                              {catBadge}
+                            </span>
+                          </div>
+
+                          {/* Key Cost Tag */}
+                          <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(4px)', border: '1px solid var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <Coins size={12} color="var(--accent-cyan)" />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                              {game.tokenCost} Key{game.tokenCost > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Card Info Content */}
+                        <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.25rem', fontWeight: 600 }}>
+                            {game.genreTag || 'Action RPG'}
+                          </div>
+                          
+                          <h4 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 700 }}>
+                            {game.title}
+                          </h4>
+
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>
+                            {game.description || 'Stream high-definition console gameplay instantly with zero hardware latency.'}
+                          </p>
+
+                          {/* Action Button */}
+                          {token ? (
+                            <button 
+                              onClick={() => handlePlayGame(game)} 
+                              className="btn btn-primary" 
+                              style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                            >
+                              <Play size={14} /> Launch Stream ({game.tokenCost} Key)
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => setCurrentView('register')} 
+                              className="btn btn-cyan" 
+                              style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                            >
+                              <Key size={14} /> Claim Keys & Play
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* WHY VORTEX PLAY - 4 FEATURE PILLARS */}
+            <div style={{ marginTop: '5rem', marginBottom: '5rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <h3 style={{ fontSize: '2rem', color: 'var(--text-primary)', fontWeight: 800 }}>
+                  WHY PLAY ON VORTEX CLOUD?
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
+                  Enterprise cloud architecture built exclusively for console enthusiasts.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
+                  <Laptop size={36} color="var(--accent-cyan)" style={{ marginBottom: '1rem' }} />
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>Zero Download Storage</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    Never wait hours for 120GB game updates again. Games launch instantly from remote high-speed NVMe storage clusters.
+                  </p>
                 </div>
-                <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'left' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>NODE: PC_RTX_4090_01</span>
-                    <span style={{ height: '8px', width: '8px', background: 'var(--status-warning)', borderRadius: '50%' }}></span>
-                  </div>
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>PC Node RTX 4090</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Cyberpunk 2077 (Path Tracing)</p>
+
+                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
+                  <Tv size={36} color="var(--accent-purple)" style={{ marginBottom: '1rem' }} />
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>PS5 & Xbox Exclusives</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    Connect to real physical PlayStation 5 and Xbox Series X console nodes directly from your web browser.
+                  </p>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
+                  <Shield size={36} color="var(--status-success)" style={{ marginBottom: '1rem' }} />
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>MongoDB Atlas Sync</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    Your player statistics, save progress, and token keys balance are backed up to secure MongoDB Atlas cloud database.
+                  </p>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
+                  <Coins size={36} color="var(--accent-cyan)" style={{ marginBottom: '1rem' }} />
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>Pay-As-You-Play Keys</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    No expensive monthly subscriptions. Spend flexible token keys only when you are actively playing console games.
+                  </p>
                 </div>
               </div>
             </div>
+
+            {/* HOW IT WORKS - 3 SIMPLE STEPS */}
+            <div className="glass-panel" style={{ padding: '3rem 2rem', borderRadius: '16px', marginTop: '4rem', marginBottom: '4rem', textAlign: 'center' }}>
+              <h3 style={{ fontSize: '2rem', color: 'var(--text-primary)', fontWeight: 800, marginBottom: '2rem' }}>
+                HOW TO START STREAMING IN 30 SECONDS
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '2rem' }}>
+                <div style={{ padding: '1rem' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-purple)', color: '#fff', fontSize: '1.4rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+                    1
+                  </div>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Create Free Pilot Account</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sign up in seconds to receive starter token keys to unlock streaming nodes.</p>
+                </div>
+
+                <div style={{ padding: '1rem' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#fff', fontSize: '1.4rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+                    2
+                  </div>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Select Console Game</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Pick your favorite title from PS5, Xbox, or PC liquid gaming catalog.</p>
+                </div>
+
+                <div style={{ padding: '1rem' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--status-success)', color: '#fff', fontSize: '1.4rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+                    3
+                  </div>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Play & Control Live Stream</h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Use keyboard (WASD) or plug in any USB gamepad controller to play instantly!</p>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '2.5rem' }}>
+                <button onClick={() => setCurrentView(token ? 'lobby' : 'register')} className="btn btn-primary" style={{ padding: '0.85rem 2.5rem', fontSize: '1rem' }}>
+                  {token ? 'Go to Console Lobby' : 'Create Free Account Now'}
+                </button>
+              </div>
+            </div>
+
           </div>
         )}
 
