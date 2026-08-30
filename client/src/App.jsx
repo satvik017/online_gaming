@@ -1085,7 +1085,12 @@ function App() {
           
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => setCurrentView(token ? 'lobby' : 'landing')}>
-            <Gamepad2 size={32} color="var(--accent-purple)" className="hover-glitch" />
+            <img 
+              src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
+              alt="VORTEX PLAY Logo" 
+              style={{ height: '42px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}
+              className="hover-glitch"
+            />
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.06em', margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <span style={{ color: 'var(--logo-vortex)', fontWeight: 900 }}>VORTEX</span>
               <span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>PLAY</span>
@@ -1294,7 +1299,11 @@ function App() {
         {currentView === 'landing' && (
           <div className="animated-fade" style={{ textAlign: 'center', padding: '4rem 1rem' }}>
             <div style={{ display: 'inline-flex', padding: '1rem', background: 'rgba(138, 43, 226, 0.1)', border: '1px solid rgba(138, 43, 226, 0.2)', borderRadius: '50%', marginBottom: '2rem' }}>
-              <Gamepad2 size={64} color="var(--accent-purple)" className="text-glow-purple" />
+              <img 
+                src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
+                alt="VORTEX PLAY Logo Emblem" 
+                style={{ width: '80px', height: '80px', objectFit: 'contain', filter: 'drop-shadow(0 4px 15px var(--accent-purple-glow))' }} 
+              />
             </div>
             
             <h2 className="text-glow-purple" style={{ fontSize: '3rem', marginBottom: '1rem', letterSpacing: '0.1em' }}>
@@ -1353,7 +1362,11 @@ function App() {
           <div className="animated-fade" style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0' }}>
             <div className="glass-panel" style={{ padding: '2.5rem', width: '100%', maxWidth: '420px', position: 'relative' }}>
               <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <Gamepad2 size={40} color="var(--accent-purple)" style={{ marginBottom: '1rem' }} />
+                <img 
+                  src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
+                  alt="VORTEX PLAY Logo" 
+                  style={{ width: '56px', height: '56px', objectFit: 'contain', marginBottom: '1rem', filter: 'drop-shadow(0 2px 10px var(--accent-purple-glow))' }} 
+                />
                 <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}>
                   {currentView === 'login' ? 'Access Console Array' : 'Register Pilot Core'}
                 </h3>
