@@ -1324,7 +1324,7 @@ function App() {
                     <span style={{ color: 'var(--accent-cyan)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>NODE: Tokyo_PS5_01</span>
                     <span style={{ height: '8px', width: '8px', background: 'var(--status-success)', borderRadius: '50%', boxShadow: '0 0 8px var(--status-success)' }}></span>
                   </div>
-                  <h4 style={{ color: '#fff', fontSize: '1.1rem' }}>PS5 Pro Node</h4>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>PS5 Pro Node</h4>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>GT7, Elden Ring, Spiderman 2</p>
                 </div>
                 <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'left' }}>
@@ -1332,7 +1332,7 @@ function App() {
                     <span style={{ color: 'var(--accent-purple)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>NODE: Seattle_Xbx_01</span>
                     <span style={{ height: '8px', width: '8px', background: 'var(--status-success)', borderRadius: '50%', boxShadow: '0 0 8px var(--status-success)' }}></span>
                   </div>
-                  <h4 style={{ color: '#fff', fontSize: '1.1rem' }}>Xbox Series X</h4>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>Xbox Series X</h4>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Forza Horizon 5, Halo Infinite</p>
                 </div>
                 <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'left' }}>
@@ -1340,7 +1340,7 @@ function App() {
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>NODE: PC_RTX_4090_01</span>
                     <span style={{ height: '8px', width: '8px', background: 'var(--status-warning)', borderRadius: '50%' }}></span>
                   </div>
-                  <h4 style={{ color: '#fff', fontSize: '1.1rem' }}>PC Node RTX 4090</h4>
+                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem' }}>PC Node RTX 4090</h4>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Cyberpunk 2077 (Path Tracing)</p>
                 </div>
               </div>
@@ -1354,7 +1354,7 @@ function App() {
             <div className="glass-panel" style={{ padding: '2.5rem', width: '100%', maxWidth: '420px', position: 'relative' }}>
               <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                 <Gamepad2 size={40} color="var(--accent-purple)" style={{ marginBottom: '1rem' }} />
-                <h3 style={{ fontSize: '1.5rem', color: '#fff' }}>
+                <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}>
                   {currentView === 'login' ? 'Access Console Array' : 'Register Pilot Core'}
                 </h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -1561,7 +1561,7 @@ function App() {
             <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', marginBottom: '1.5rem', borderRadius: '12px', borderLeft: '3px solid var(--accent-cyan)' }}>
               <div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Remote Game host</span>
-                <h3 style={{ fontSize: '1.3rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Tv size={18} color="var(--accent-cyan)" />
                   {selectedMachine.name}
                 </h3>
@@ -1631,7 +1631,7 @@ function App() {
 
                 {/* Game Controller Map Overlay Guide */}
                 <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.9rem', color: '#fff', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
                     Virtual Gamepad Diagnostics
                   </h4>
                   <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
@@ -1711,7 +1711,7 @@ function App() {
               
               {/* Token packages shop */}
               <div>
-                <h3 style={{ fontSize: '1.8rem', color: '#fff', marginBottom: '0.5rem' }}>Vortex Key Shop</h3>
+                <h3 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Vortex Key Shop</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>Top up tokens to play. Every token unlocks games streams.</p>
 
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(0, 243, 255, 0.08)', border: '1px solid rgba(0, 243, 255, 0.2)', padding: '0.4rem 0.8rem', borderRadius: '6px', marginBottom: '2rem', fontSize: '0.85rem', color: 'var(--accent-cyan)' }}>
@@ -1735,11 +1735,11 @@ function App() {
                     >
                       <div>
                         {pkg.recommended && (
-                          <span style={{ background: 'var(--accent-purple)', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '0.5rem' }}>
+                          <span style={{ background: 'var(--accent-purple)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '0.5rem' }}>
                             Best Value
                           </span>
                         )}
-                        <h4 style={{ color: '#fff', fontSize: '1.25rem' }}>{pkg.title}</h4>
+                        <h4 style={{ color: 'var(--text-primary)', fontSize: '1.25rem' }}>{pkg.title}</h4>
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{pkg.desc}</p>
                       </div>
 
@@ -1753,7 +1753,7 @@ function App() {
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                          <span style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-display)' }}>
+                          <span style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
                             ${pkg.price.toFixed(2)}
                           </span>
                           <button onClick={() => selectTokenPackage(pkg)} className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', marginTop: '0.5rem' }}>
@@ -1768,7 +1768,7 @@ function App() {
 
               {/* Transactions History panel */}
               <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
-                <h4 style={{ fontSize: '1rem', color: '#fff', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <History size={16} />
                   Ledger History
                 </h4>
@@ -1790,7 +1790,7 @@ function App() {
                           </div>
                         </div>
                         <div style={{ textAlign: 'right', fontWeight: 600 }}>
-                          <div style={{ color: '#fff' }}>
+                          <div style={{ color: 'var(--text-primary)' }}>
                             {tx.type === 'purchase' ? `+${tx.amount}` : `-${tx.amount}`} Keys
                           </div>
                           {tx.cost > 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>${tx.cost.toFixed(2)}</div>}
@@ -1807,7 +1807,7 @@ function App() {
 
         {/* PAYMENT CHECKOUT MODAL */}
         {checkoutPackage && (
-          <div className="animated-fade" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+          <div className="animated-fade" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
             <div className="glass-panel" style={{ padding: '2rem', width: '100%', maxWidth: '480px', position: 'relative' }}>
               
               {/* Close btn */}
@@ -1820,7 +1820,7 @@ function App() {
               </button>
 
               <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.4rem', color: '#fff' }}>Secure checkout gateway</h3>
+                <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)' }}>Secure checkout gateway</h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   Buying <strong>{checkoutPackage.tokens} Token Keys</strong> for <strong>${checkoutPackage.price.toFixed(2)}</strong>
                 </p>
@@ -1959,7 +1959,7 @@ function App() {
                 <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
                   ADMIN CONTROL CENTER
                 </div>
-                <h4 style={{ color: '#fff', fontSize: '1.1rem', margin: '0.2rem 0' }}>Vortex Host Console</h4>
+                <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', margin: '0.2rem 0' }}>Vortex Host Console</h4>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>@{user.username} (Super Admin)</div>
               </div>
 
@@ -2020,7 +2020,7 @@ function App() {
               {/* TAB 1: OVERVIEW ANALYTICS */}
               {adminTab === 'overview' && (
                 <div className="animated-fade">
-                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <LayoutDashboard size={22} color="var(--accent-cyan)" /> Platform Analytics & Financial Metrics
                   </h3>
 
@@ -2028,7 +2028,7 @@ function App() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
                     <div className="glass-panel" style={{ padding: '1.25rem' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registered Players</span>
-                      <h4 style={{ fontSize: '1.8rem', color: '#fff', margin: '0.2rem 0' }}>{adminStats.totalUsers}</h4>
+                      <h4 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', margin: '0.2rem 0' }}>{adminStats.totalUsers}</h4>
                     </div>
                     <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid var(--accent-cyan)' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active Streams</span>
@@ -2036,7 +2036,7 @@ function App() {
                     </div>
                     <div className="glass-panel" style={{ padding: '1.25rem' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Keys Transacted</span>
-                      <h4 style={{ fontSize: '1.8rem', color: '#fff', margin: '0.2rem 0' }}>{adminStats.totalTokensSold}</h4>
+                      <h4 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', margin: '0.2rem 0' }}>{adminStats.totalTokensSold}</h4>
                     </div>
                     <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid var(--accent-purple)' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estimated Revenue</span>
@@ -2046,7 +2046,7 @@ function App() {
 
                   {/* Node Capacity & System Health */}
                   <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                    <h4 style={{ fontSize: '1rem', color: '#fff', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                    <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
                       Host Capacity Breakdown
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
@@ -2055,8 +2055,8 @@ function App() {
                         const avail = machines.filter(m => m.type === catType && m.status === 'available').length;
                         const label = catType === 'ps5' ? 'PlayStation 5 Cluster' : catType === 'xbox' ? 'Xbox Series X Array' : 'Liquid PC Rigs';
                         return (
-                          <div key={catType} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                            <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600, marginBottom: '0.4rem' }}>{label}</div>
+                          <div key={catType} style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '0.4rem' }}>{label}</div>
                             <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
                               {avail} / {total} Available
                             </div>
@@ -2071,14 +2071,14 @@ function App() {
               {/* TAB 2: GAMES CATALOG MANAGER */}
               {adminTab === 'games' && (
                 <div className="animated-fade">
-                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Gamepad2 size={22} color="var(--accent-cyan)" /> Games Catalog Manager
                   </h3>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
                     {/* Game Creation Form */}
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
                         Add New Game to Catalog
                       </h4>
 
@@ -2205,17 +2205,17 @@ function App() {
 
                     {/* Catalog Games List */}
                     <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
-                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
                         Active Catalog Titles ({games.length})
                       </h4>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
                         {games.map((g) => (
-                          <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                          <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <img src={g.coverUrl} alt={g.title} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
                               <div>
-                                <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.9rem' }}>{g.title}</div>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{g.title}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                                   Category: <span style={{ color: 'var(--accent-cyan)' }}>{g.categoryId.toUpperCase()}</span> | {g.tokenCost} Key(s)
                                 </div>
@@ -2235,14 +2235,14 @@ function App() {
               {/* TAB 3: HARDWARE NODES CLUSTER */}
               {adminTab === 'nodes' && (
                 <div className="animated-fade">
-                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Cpu size={22} color="var(--accent-cyan)" /> Physical & Virtual Hardware Nodes
                   </h3>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                     {/* Add Machine Form */}
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
                         Connect New Hardware Node
                       </h4>
 
@@ -2327,15 +2327,15 @@ function App() {
 
                     {/* Nodes Listing */}
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
                         Connected Cluster Nodes ({machines.length})
                       </h4>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
                         {machines.map((m) => (
-                          <div key={m.id} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                          <div key={m.id} style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ fontWeight: 600, color: '#fff' }}>{m.name}</div>
+                              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.name}</div>
                               <button onClick={() => handleDeleteMachine(m.id)} className="btn btn-secondary" style={{ padding: '0.3rem 0.5rem' }}>
                                 <Trash2 size={14} color="var(--status-danger)" />
                               </button>
@@ -2354,14 +2354,14 @@ function App() {
               {/* TAB 4: PRICING & TOKEN RATES */}
               {adminTab === 'pricing' && (
                 <div className="animated-fade">
-                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Coins size={22} color="var(--accent-purple)" /> Pricing & Per-Token Session Configurator
                   </h3>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                     {/* Session Duration Configurator */}
                     <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
-                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
                         Per-Token Play Duration (Minutes)
                       </h4>
 
@@ -2388,7 +2388,7 @@ function App() {
 
                     {/* Token Package Manager */}
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
                         Add Shop Package
                       </h4>
 
@@ -2415,8 +2415,8 @@ function App() {
                       {/* Package Listing */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {packages.map((pkg) => (
-                          <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
-                            <div style={{ color: '#fff', fontSize: '0.85rem' }}>{pkg.title} ({pkg.tokens} Keys - ${pkg.price?.toFixed(2)})</div>
+                          <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'var(--bg-tertiary)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ color: 'var(--text-primary)', fontSize: '0.85rem' }}>{pkg.title} ({pkg.tokens} Keys - ${pkg.price?.toFixed(2)})</div>
                             <button onClick={() => handleDeletePackage(pkg.id)} className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem' }}>
                               <Trash2 size={12} color="var(--status-danger)" />
                             </button>
@@ -2431,7 +2431,7 @@ function App() {
               {/* TAB 5: LIVE STREAMS MONITOR */}
               {adminTab === 'sessions' && (
                 <div className="animated-fade">
-                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Activity size={22} color="var(--accent-cyan)" /> Live Active Sessions & Kill Switch
                   </h3>
 
@@ -2445,7 +2445,7 @@ function App() {
                         adminSessions.map((sess) => (
                           <div key={sess.id} className="glass-panel" style={{ padding: '1rem', borderLeft: '3px solid var(--accent-purple)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                              <div style={{ fontWeight: 600, color: '#fff', fontSize: '1rem' }}>@{sess.username}</div>
+                              <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '1rem' }}>@{sess.username}</div>
                               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '0.2rem' }}>
                                 Station: {sess.machineName} ({sess.machineType.toUpperCase()}) | Started: {new Date(sess.startTime).toLocaleTimeString()}
                               </div>
@@ -2468,16 +2468,16 @@ function App() {
               {/* TAB 6: REGISTERED PLAYERS */}
               {adminTab === 'players' && (
                 <div className="animated-fade">
-                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Users size={22} color="var(--accent-cyan)" /> Registered Player Accounts ({adminUsersList.length})
                   </h3>
 
                   <div className="glass-panel" style={{ padding: '1.5rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
                       {adminUsersList.map((usr) => (
-                        <div key={usr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                        <div key={usr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                           <div>
-                            <div style={{ fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                               @{usr.username} {usr.isAdmin && <span style={{ background: 'var(--accent-purple)', fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', color: '#fff' }}>ADMIN</span>}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
