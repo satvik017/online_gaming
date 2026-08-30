@@ -181,17 +181,18 @@ function App() {
         const publicUrl = await uploadGameCoverToSupabase(file);
         setNewGameCover(publicUrl);
       } else {
-        // Convert to data URL preview if Supabase keys aren't set in environment variables
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setNewGameCover(reader.result);
-          setUploadingImage(false);
-        };
-        reader.readAsDataURL(file);
-        return;
+        throw new Error('Supabase credentials (VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY) are missing in environment variables.');
       }
     } catch (err) {
-      setGameActionError(`Supabase Upload Notice: ${err.message}`);
+      setGameActionError(`Supabase Storage Notice: ${err.message}`);
+      // Fallback preview so admin is never blocked from adding game cover
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          setNewGameCover(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
     } finally {
       setUploadingImage(false);
     }
