@@ -20,7 +20,11 @@ import {
   Monitor, 
   Layers,
   Send,
-  AlertTriangle
+  AlertTriangle,
+  LayoutDashboard,
+  Users,
+  Sparkles,
+  Filter
 } from 'lucide-react';
 
 // Production Backend API & WebSockets URL (reads from VITE_BACKEND_URL env var, defaults to localhost:5050)
@@ -83,6 +87,29 @@ function App() {
   const canvasRef = useRef(null);
   const animationFrameRef = useRef(null);
   const logTerminalEndRef = useRef(null);
+
+  // Category-Wise Games Catalog State
+  const [categories, setCategories] = useState([
+    { id: 'cat_ps5', name: 'PlayStation 5', type: 'ps5', icon: 'Tv' },
+    { id: 'cat_xbox', name: 'Xbox Series X', type: 'xbox', icon: 'Monitor' },
+    { id: 'cat_pc', name: 'Liquid PC Rig', type: 'pc', icon: 'Laptop' }
+  ]);
+  const [games, setGames] = useState([]);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState('all');
+  const [launchingGameId, setLaunchingGameId] = useState(null);
+
+  // Admin Sidebar & Users State
+  const [adminTab, setAdminTab] = useState('overview'); // overview, games, nodes, pricing, sessions, players
+  const [adminUsersList, setAdminUsersList] = useState([]);
+
+  // Admin Add Game Form State
+  const [newGameTitle, setNewGameTitle] = useState('');
+  const [newGameCategory, setNewGameCategory] = useState('ps5');
+  const [newGameCost, setNewGameCost] = useState(1);
+  const [newGameGenre, setNewGameGenre] = useState('Action / Adventure');
+  const [newGameCover, setNewGameCover] = useState('');
+  const [newGameDesc, setNewGameDesc] = useState('');
+  const [gameActionError, setGameActionError] = useState('');
 
   // Admin Package & Settings Config State
   const [packages, setPackages] = useState([
@@ -151,6 +178,33 @@ function App() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const data = await apiFetch('/api/categories');
+      setCategories(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchGames = async () => {
+    try {
+      const data = await apiFetch('/api/games');
+      setGames(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchAdminUsers = async () => {
+    try {
+      const data = await apiFetch('/api/admin/users');
+      setAdminUsersList(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchPackages = async () => {
     try {
       const data = await apiFetch('/api/packages');
@@ -175,10 +229,14 @@ function App() {
   // Load basic components on boot
   useEffect(() => {
     fetchMachines();
+    fetchCategories();
+    fetchGames();
     fetchPackages();
     fetchSettings();
     const interval = setInterval(() => {
       fetchMachines();
+      fetchCategories();
+      fetchGames();
       fetchPackages();
       fetchSettings();
     }, 10000);
@@ -257,6 +315,7 @@ function App() {
       setAdminStats(stats);
       const activeSess = await apiFetch('/api/admin/sessions');
       setAdminSessions(activeSess);
+      fetchAdminUsers();
     } catch (err) {
       console.error(err);
     }
@@ -706,6 +765,96 @@ function App() {
     return () => cleanupGameLoop();
   }, []);
 
+  // --- GAMES CATALOG ACTIONS & LAUNCH ---
+
+  const handleCreateGame = async (e) => {
+    e.preventDefault();
+    setGameActionError('');
+    if (!newGameTitle) {
+      setGameActionError('Game title is required');
+      return;
+    }
+
+    try {
+      await apiFetch('/api/games', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: newGameTitle,
+          categoryId: newGameCategory,
+          tokenCost: parseInt(newGameCost) || 1,
+          genre: newGameGenre,
+          coverUrl: newGameCover || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
+          description: newGameDesc
+        })
+      });
+
+      setNewGameTitle('');
+      setNewGameGenre('Action / Adventure');
+      setNewGameCover('');
+      setNewGameDesc('');
+      fetchGames();
+      alert(`Game '${newGameTitle}' added to ${newGameCategory.toUpperCase()} catalog.`);
+    } catch (err) {
+      setGameActionError(err.message);
+    }
+  };
+
+  const handleDeleteGame = async (id) => {
+    if (window.confirm('Delete this game from the catalog?')) {
+      try {
+        await apiFetch(`/api/games/${id}`, { method: 'DELETE' });
+        fetchGames();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  };
+
+  const handleLaunchGame = async (game) => {
+    setLaunchingGameId(game.id);
+    try {
+      const res = await apiFetch(`/api/games/${game.id}/play`, {
+        method: 'POST'
+      });
+
+      setUser((prev) => prev ? ({ ...prev, tokenBalance: res.tokenBalance }) : null);
+
+      setSelectedMachine({
+        id: res.machineId,
+        name: res.machineName,
+        activeGame: res.gameTitle,
+        type: game.categoryId
+      });
+
+      setActiveSession({
+        id: res.sessionId,
+        machineId: res.machineId,
+        startTime: new Date()
+      });
+
+      setSessionSecondsLeft(res.durationSec);
+      setSessionLogs([
+        `[System] Initializing cloud game session for ${game.title}...`,
+        `[System] Reserved virtual host node ${res.machineName} (${game.categoryId.toUpperCase()})...`
+      ]);
+
+      if (socketRef.current) {
+        socketRef.current.emit('join_play_room', {
+          token,
+          machineId: res.machineId,
+          sessionId: res.sessionId
+        });
+      }
+
+      setCurrentView('play');
+      setupVirtualGameCanvas();
+    } catch (err) {
+      alert(`Launch Failed: ${err.message}`);
+    } finally {
+      setLaunchingGameId(null);
+    }
+  };
+
   // --- ADMIN PORTAL ACTIONS ---
   const handleCreateMachine = async (e) => {
     e.preventDefault();
@@ -1053,153 +1202,136 @@ function App() {
           </div>
         )}
 
-        {/* LOBBY / MACHINE SELECTION GRID */}
+        {/* LOBBY / CATEGORY-WISE GAMES CATALOG GRID */}
         {currentView === 'lobby' && (
           <div className="animated-fade">
             {/* Header info */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
-                <h3 style={{ fontSize: '1.8rem', color: '#fff' }}>Console Link Array</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Select a virtual game station. Spending tokens registers session key.</p>
+                <h3 style={{ fontSize: '1.8rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <Gamepad2 size={28} color="var(--accent-cyan)" />
+                  Cloud Gaming Catalog
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  Select a title to stream. Spending 1 Token key instantly connects you to a high-speed host node.
+                </p>
               </div>
               
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Online Stations</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active Cluster Stations</div>
                   <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--status-success)', fontFamily: 'var(--font-mono)' }}>
-                    {machines.filter(m => m.status === 'available').length} / {machines.length}
+                    {machines.filter(m => m.status === 'available').length} / {machines.length} Ready
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Grid Array */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-              {machines.length === 0 ? (
+            {/* Category Filter Tabs */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => setActiveCategoryFilter('all')}
+                className={`btn ${activeCategoryFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}
+              >
+                🎮 All Games ({games.length})
+              </button>
+              {categories.map((cat) => {
+                const catGameCount = games.filter(g => g.categoryId === cat.type).length;
+                const isActive = activeCategoryFilter === cat.type;
+                return (
+                  <button 
+                    key={cat.id}
+                    onClick={() => setActiveCategoryFilter(cat.type)}
+                    className={`btn ${isActive ? 'btn-cyan' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    {cat.type === 'ps5' ? <Tv size={16} /> : cat.type === 'xbox' ? <Monitor size={16} /> : <Laptop size={16} />}
+                    {cat.name} ({catGameCount})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Games Grid Catalog */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1.5rem' }}>
+              {games.filter(g => activeCategoryFilter === 'all' || g.categoryId === activeCategoryFilter).length === 0 ? (
                 <div className="glass-panel" style={{ padding: '3rem', gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  No active gaming machine connections initialized by administrator server side.
+                  No games available in this category catalog.
                 </div>
               ) : (
-                machines.map((machine) => {
-                  const isAvailable = machine.status === 'available';
-                  const isBusy = machine.status === 'in-use';
-                  const isOffline = machine.status === 'offline';
-                  const isMyMachine = machine.currentUserId === user?.id;
+                games.filter(g => activeCategoryFilter === 'all' || g.categoryId === activeCategoryFilter).map((game) => {
+                  const categoryObj = categories.find(c => c.type === game.categoryId);
+                  const matchingMachines = machines.filter(m => m.type === game.categoryId);
+                  const availableCount = matchingMachines.filter(m => m.status === 'available').length;
+                  const isBusy = availableCount === 0;
 
                   return (
                     <div 
-                      key={machine.id} 
-                      className={`glass-panel ${isAvailable ? 'cyan-hover' : ''}`} 
+                      key={game.id} 
+                      className="glass-panel cyan-hover" 
                       style={{ 
-                        padding: '1.5rem', 
-                        borderLeft: isAvailable 
-                          ? '3px solid var(--accent-cyan)' 
-                          : isBusy 
-                            ? '3px solid var(--accent-purple)' 
-                            : '3px solid var(--text-muted)',
-                        opacity: isOffline ? 0.6 : 1
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        border: '1px solid var(--border-color)',
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                       }}
                     >
-                      {/* Node Category & Status */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.04)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                          {machine.type === 'ps5' ? <Tv size={14} color="var(--accent-cyan)" /> : machine.type === 'xbox' ? <Monitor size={14} color="#107C10" /> : <Laptop size={14} color="var(--accent-purple)" />}
-                          <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', color: '#fff' }}>
-                            {machine.type} Station
-                          </span>
-                        </div>
-                        {/* Status Label */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span style={{ 
-                            height: '6px', 
-                            width: '6px', 
-                            background: isAvailable ? 'var(--status-success)' : isBusy ? 'var(--status-warning)' : 'var(--text-muted)', 
-                            borderRadius: '50%',
-                            boxShadow: isAvailable ? '0 0 6px var(--status-success)' : ''
-                          }}></span>
-                          <span style={{ 
-                            fontSize: '0.75rem', 
-                            fontFamily: 'var(--font-mono)', 
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            color: isAvailable ? 'var(--status-success)' : isBusy ? 'var(--status-warning)' : 'var(--text-muted)'
-                          }}>
-                            {isAvailable ? 'Available' : isBusy ? (isMyMachine ? 'Your Session' : 'In Use') : 'Offline'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Device Title & Region */}
-                      <h4 style={{ color: '#fff', fontSize: '1.2rem', marginBottom: '0.25rem' }}>{machine.name}</h4>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: '0.75rem' }}>
-                        <span>IP: {machine.ipAddress}</span>
-                        {machine.regionTag && (
-                          <span style={{ color: 'var(--accent-cyan)', background: 'rgba(0, 243, 255, 0.08)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
-                            📍 {machine.regionTag}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Hardware Specs Grid Badges */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginBottom: '1.25rem', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
-                          <strong style={{ color: '#fff' }}>GPU:</strong> {machine.gpuSpec || 'Ray-Tracing GPU'}
-                        </div>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
-                          <strong style={{ color: '#fff' }}>RAM:</strong> {machine.ramSpec || '16GB High-Speed'}
-                        </div>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
-                          <strong style={{ color: '#fff' }}>CPU:</strong> {machine.cpuSpec || '8-Core Processor'}
-                        </div>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.35rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
-                          <strong style={{ color: '#fff' }}>MAX:</strong> {machine.resolutionSpec || '4K @ 60 FPS'}
-                        </div>
-                      </div>
-
-                      {/* Current Game */}
-                      <div style={{ background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.5rem' }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '2rem' }}>Loaded game core</div>
-                        <div style={{ color: 'var(--accent-cyan)', fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <Gamepad2 size={16} />
-                          {machine.activeGame}
-                        </div>
-                      </div>
-
-                      {/* Cost Info / Controls */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Key Cost</span>
-                          <span style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                            <Coins size={14} color="var(--accent-cyan)" />
-                            {machine.tokenCostPerSession} Token(s) <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>/ {systemSettings.sessionDurationMinutes || 15}m</span>
+                      {/* Game Cover Image Header */}
+                      <div style={{ height: '160px', width: '100%', position: 'relative', overflow: 'hidden', background: '#12141d' }}>
+                        <img 
+                          src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
+                          alt={game.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+                        />
+                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95), transparent 70%)' }} />
+                        
+                        {/* Category Badge Pill */}
+                        <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          {game.categoryId === 'ps5' ? <Tv size={12} color="var(--accent-cyan)" /> : game.categoryId === 'xbox' ? <Monitor size={12} color="#107C10" /> : <Laptop size={12} color="var(--accent-purple)" />}
+                          <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: '#fff' }}>
+                            {categoryObj?.name || game.categoryId}
                           </span>
                         </div>
 
-                        {/* Action buttons */}
-                        {isMyMachine ? (
+                        {/* Availability Pill */}
+                        <div style={{ position: 'absolute', top: '10px', right: '10px', background: availableCount > 0 ? 'rgba(0, 255, 170, 0.15)' : 'rgba(255, 170, 0, 0.15)', border: availableCount > 0 ? '1px solid var(--status-success)' : '1px solid var(--status-warning)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', color: availableCount > 0 ? 'var(--status-success)' : 'var(--status-warning)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                          {availableCount > 0 ? `${availableCount} Ready` : 'Busy'}
+                        </div>
+                      </div>
+
+                      {/* Game Info Body */}
+                      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.25rem' }}>
+                          {game.genre || 'Action'}
+                        </div>
+                        <h4 style={{ color: '#fff', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>{game.title}</h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {game.description || 'Stream high-definition gameplay on low-latency cloud nodes.'}
+                        </p>
+
+                        {/* Footer: Token Cost & Play Button */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Key Cost</span>
+                            <span style={{ color: '#fff', fontWeight: 700, fontSize: '1rem', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <Coins size={14} color="var(--accent-cyan)" />
+                              {game.tokenCost || 1} Token <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>/ {systemSettings.sessionDurationMinutes || 15}m</span>
+                            </span>
+                          </div>
+
                           <button 
-                            onClick={() => {
-                              setSelectedMachine(machine);
-                              setCurrentView('play');
-                            }} 
-                            className="btn btn-primary" 
+                            onClick={() => handleLaunchGame(game)}
+                            disabled={launchingGameId === game.id || isBusy}
+                            className={`btn ${availableCount > 0 ? 'btn-cyan' : 'btn-secondary'}`}
                             style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
                           >
-                            Resume Play
+                            <Play size={12} fill={availableCount > 0 ? '#0b0c10' : 'none'} />
+                            {launchingGameId === game.id ? 'Connecting...' : (availableCount > 0 ? 'Play Stream' : 'All Busy')}
                           </button>
-                        ) : (
-                          <button 
-                            onClick={() => handleStartPlay(machine)} 
-                            disabled={!isAvailable}
-                            className={`btn ${isAvailable ? 'btn-cyan' : 'btn-secondary'}`}
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                          >
-                            <Play size={12} fill={isAvailable ? '#0b0c10' : 'none'} />
-                            {isAvailable ? 'Launch play' : 'Occupied'}
-                          </button>
-                        )}
+                        </div>
                       </div>
-
                     </div>
                   );
                 })
@@ -1603,390 +1735,512 @@ function App() {
           </div>
         )}
 
-        {/* ADMIN DASHBOARD PORTAL */}
+        {/* ADMIN DASHBOARD PORTAL WITH SIDEBAR MENU */}
         {currentView === 'admin' && user?.isAdmin && (
-          <div className="animated-fade">
+          <div className="animated-fade" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '2rem', minHeight: '75vh' }}>
             
-            {/* Stats Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-              <div className="glass-panel" style={{ padding: '1rem 1.5rem' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registered Players</span>
-                <h4 style={{ fontSize: '1.8rem', color: '#fff', margin: '0.2rem 0' }}>{adminStats.totalUsers}</h4>
+            {/* LEFT-SIDEBAR MENU */}
+            <div className="glass-panel" style={{ padding: '1.25rem', height: 'fit-content', position: 'sticky', top: '90px' }}>
+              <div style={{ paddingBottom: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+                  ADMIN CONTROL CENTER
+                </div>
+                <h4 style={{ color: '#fff', fontSize: '1.1rem', margin: '0.2rem 0' }}>Vortex Host Console</h4>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>@{user.username} (Super Admin)</div>
               </div>
-              <div className="glass-panel" style={{ padding: '1rem 1.5rem', borderLeft: '3px solid var(--accent-cyan)' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active play rooms</span>
-                <h4 style={{ fontSize: '1.8rem', color: 'var(--accent-cyan)', margin: '0.2rem 0' }}>{adminStats.totalActivePlayers}</h4>
-              </div>
-              <div className="glass-panel" style={{ padding: '1rem 1.5rem' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Keys Transacted</span>
-                <h4 style={{ fontSize: '1.8rem', color: '#fff', margin: '0.2rem 0' }}>{adminStats.totalTokensSold}</h4>
-              </div>
-              <div className="glass-panel" style={{ padding: '1rem 1.5rem', borderLeft: '3px solid var(--accent-purple)' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Simulated Revenue</span>
-                <h4 style={{ fontSize: '1.8rem', color: 'var(--accent-purple)', margin: '0.2rem 0' }}>${adminStats.totalRevenue.toFixed(2)}</h4>
+
+              {/* Sidebar Menu Items */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => setAdminTab('overview')}
+                  className={`btn ${adminTab === 'overview' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                >
+                  <LayoutDashboard size={16} /> Overview Analytics
+                </button>
+
+                <button 
+                  onClick={() => setAdminTab('games')}
+                  className={`btn ${adminTab === 'games' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                >
+                  <Gamepad2 size={16} /> Games Catalog ({games.length})
+                </button>
+
+                <button 
+                  onClick={() => setAdminTab('nodes')}
+                  className={`btn ${adminTab === 'nodes' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                >
+                  <Cpu size={16} /> Hardware Clusters ({machines.length})
+                </button>
+
+                <button 
+                  onClick={() => setAdminTab('pricing')}
+                  className={`btn ${adminTab === 'pricing' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                >
+                  <Coins size={16} /> Pricing & Token Rates
+                </button>
+
+                <button 
+                  onClick={() => setAdminTab('sessions')}
+                  className={`btn ${adminTab === 'sessions' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                >
+                  <Activity size={16} /> Live Streams ({adminSessions.length})
+                </button>
+
+                <button 
+                  onClick={() => setAdminTab('players')}
+                  className={`btn ${adminTab === 'players' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                >
+                  <Users size={16} /> Registered Players ({adminUsersList.length})
+                </button>
               </div>
             </div>
 
-            {/* Split layout: Add/Manage Devices vs Active Sessions Monitor */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-              
-              {/* Form and listing: Machine management */}
-              <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                <h4 style={{ fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Plus size={18} />
-                  Connect New Hardware Node
-                </h4>
+            {/* MAIN ADMIN SERVICE MODULE CONTENT AREA */}
+            <div>
+              {/* TAB 1: OVERVIEW ANALYTICS */}
+              {adminTab === 'overview' && (
+                <div className="animated-fade">
+                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <LayoutDashboard size={22} color="var(--accent-cyan)" /> Platform Analytics & Financial Metrics
+                  </h3>
 
-                <form onSubmit={handleCreateMachine} style={{ marginBottom: '2.5rem' }}>
-                  {adminActionError && (
-                    <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
-                      {adminActionError}
+                  {/* Stats Grid Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+                    <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registered Players</span>
+                      <h4 style={{ fontSize: '1.8rem', color: '#fff', margin: '0.2rem 0' }}>{adminStats.totalUsers}</h4>
                     </div>
-                  )}
-
-                  <div className="form-group">
-                    <label className="form-label">Station Name</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. PS5 Pro - node_4"
-                      value={newMachineName}
-                      onChange={(e) => setNewMachineName(e.target.value)}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">Device Type</label>
-                      <select 
-                        className="form-input" 
-                        value={newMachineType}
-                        style={{ appearance: 'none', WebkitAppearance: 'none' }}
-                        onChange={(e) => setNewMachineType(e.target.value)}
-                      >
-                        <option value="ps5">PlayStation 5</option>
-                        <option value="xbox">Xbox Series X</option>
-                        <option value="pc">Gaming PC</option>
-                      </select>
+                    <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid var(--accent-cyan)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active Streams</span>
+                      <h4 style={{ fontSize: '1.8rem', color: 'var(--accent-cyan)', margin: '0.2rem 0' }}>{adminStats.totalActivePlayers}</h4>
                     </div>
-                    
-                    <div className="form-group">
-                      <label className="form-label">Session cost</label>
-                      <input 
-                        type="number" 
-                        className="form-input" 
-                        min="1"
-                        max="5"
-                        value={newMachineCost}
-                        onChange={(e) => setNewMachineCost(parseInt(e.target.value) || 1)}
-                      />
+                    <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Keys Transacted</span>
+                      <h4 style={{ fontSize: '1.8rem', color: '#fff', margin: '0.2rem 0' }}>{adminStats.totalTokensSold}</h4>
+                    </div>
+                    <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid var(--accent-purple)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estimated Revenue</span>
+                      <h4 style={{ fontSize: '1.8rem', color: 'var(--accent-purple)', margin: '0.2rem 0' }}>${adminStats.totalRevenue.toFixed(2)}</h4>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">Virtual IP / Address</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        placeholder="192.168.1.100"
-                        value={newMachineIp}
-                        onChange={(e) => setNewMachineIp(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Default Game Core</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        placeholder="Demon Souls"
-                        value={newMachineGame}
-                        onChange={(e) => setNewMachineGame(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Hardware Specification Configuration */}
-                  <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.75rem', fontWeight: 600 }}>
-                      Hardware Configuration Specs
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Server Region / Location</label>
-                      <select 
-                        className="form-input" 
-                        value={newMachineRegion}
-                        style={{ appearance: 'none', WebkitAppearance: 'none' }}
-                        onChange={(e) => setNewMachineRegion(e.target.value)}
-                      >
-                        <option value="Tokyo - Asia East">Tokyo - Asia East</option>
-                        <option value="Seattle - US West">Seattle - US West</option>
-                        <option value="Frankfurt - EU Central">Frankfurt - EU Central</option>
-                        <option value="London - EU West">London - EU West</option>
-                        <option value="Singapore - SE Asia">Singapore - SE Asia</option>
-                      </select>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <div className="form-group">
-                        <label className="form-label">CPU / Processor</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="e.g. AMD Zen 2 8-Core"
-                          value={newMachineCpu}
-                          onChange={(e) => setNewMachineCpu(e.target.value)}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">GPU / Graphics Card</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="e.g. RTX 4090 24GB"
-                          value={newMachineGpu}
-                          onChange={(e) => setNewMachineGpu(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <div className="form-group">
-                        <label className="form-label">RAM / Memory</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="e.g. 16GB GDDR6"
-                          value={newMachineRam}
-                          onChange={(e) => setNewMachineRam(e.target.value)}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Max Resolution / FPS</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          placeholder="e.g. 4K @ 120 FPS"
-                          value={newMachineResolution}
-                          onChange={(e) => setNewMachineResolution(e.target.value)}
-                        />
-                      </div>
+                  {/* Node Capacity & System Health */}
+                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <h4 style={{ fontSize: '1rem', color: '#fff', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                      Host Capacity Breakdown
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+                      {['ps5', 'xbox', 'pc'].map((catType) => {
+                        const total = machines.filter(m => m.type === catType).length;
+                        const avail = machines.filter(m => m.type === catType && m.status === 'available').length;
+                        const label = catType === 'ps5' ? 'PlayStation 5 Cluster' : catType === 'xbox' ? 'Xbox Series X Array' : 'Liquid PC Rigs';
+                        return (
+                          <div key={catType} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                            <div style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 600, marginBottom: '0.4rem' }}>{label}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                              {avail} / {total} Available
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-
-                  <button type="submit" className="btn btn-cyan" style={{ width: '100%', marginTop: '0.5rem', padding: '0.75rem' }}>
-                    Link Node
-                  </button>
-                </form>
-
-                {/* Listing to Delete */}
-                <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
-                  Connected Clusters
-                </h4>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto' }}>
-                  {machines.map((m) => (
-                    <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.02)' }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#fff' }}>{m.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          Type: <span style={{ textTransform: 'uppercase' }}>{m.type}</span> | IP: {m.ipAddress}
-                        </div>
-                      </div>
-                      <button onClick={() => handleDeleteMachine(m.id)} className="btn btn-secondary" style={{ padding: '0.4rem', border: 'none' }} title="Delete Machine Node">
-                        <Trash2 size={16} color="var(--status-danger)" />
-                      </button>
-                    </div>
-                  ))}
                 </div>
-              </div>
+              )}
 
-              {/* Active user play sessions monitor */}
-              <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
-                <h4 style={{ fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Activity size={18} color="var(--accent-cyan)" />
-                  Live Host Controller Monitors
-                </h4>
+              {/* TAB 2: GAMES CATALOG MANAGER */}
+              {adminTab === 'games' && (
+                <div className="animated-fade">
+                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Gamepad2 size={22} color="var(--accent-cyan)" /> Games Catalog Manager
+                  </h3>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {adminSessions.length === 0 ? (
-                    <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                      No active gaming streams in progress.
-                    </div>
-                  ) : (
-                    adminSessions.map((sess) => (
-                      <div key={sess.id} className="glass-panel" style={{ padding: '1rem', borderLeft: '3px solid var(--accent-purple)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                          <div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>PLAYER CHANNEL</span>
-                            <div style={{ fontWeight: 600, color: '#fff' }}>@{sess.username}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem' }}>
+                    {/* Game Creation Form */}
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
+                        Add New Game to Catalog
+                      </h4>
+
+                      <form onSubmit={handleCreateGame}>
+                        {gameActionError && (
+                          <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                            {gameActionError}
                           </div>
-                          <button 
-                            onClick={() => handleTerminateUserSession(sess.id)} 
-                            className="btn btn-secondary" 
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', color: 'var(--status-danger)', borderColor: 'rgba(255, 0, 85, 0.2)' }}
-                          >
-                            Kill Connection
-                          </button>
+                        )}
+
+                        <div className="form-group">
+                          <label className="form-label">Game Title</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="e.g. GTA V, Spider-Man 2, Elden Ring"
+                            value={newGameTitle}
+                            onChange={(e) => setNewGameTitle(e.target.value)}
+                          />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                          <div>
-                            <span style={{ color: 'var(--text-muted)' }}>Station:</span> {sess.machineName} ({sess.machineType})
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Machine Category</label>
+                            <select 
+                              className="form-input" 
+                              value={newGameCategory}
+                              style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                              onChange={(e) => setNewGameCategory(e.target.value)}
+                            >
+                              <option value="ps5">PlayStation 5</option>
+                              <option value="xbox">Xbox Series X</option>
+                              <option value="pc">Liquid Gaming PC</option>
+                            </select>
                           </div>
-                          <div>
-                            <span style={{ color: 'var(--text-muted)' }}>Started:</span> {new Date(sess.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          <div className="form-group">
+                            <label className="form-label">Key Cost / Session</label>
+                            <input 
+                              type="number" 
+                              className="form-input" 
+                              min="1"
+                              value={newGameCost}
+                              onChange={(e) => setNewGameCost(e.target.value)}
+                            />
                           </div>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
 
-            </div>
-
-            {/* Split layout 2: Token Package Pricing & Session Play Time Configurator */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
-              
-              {/* Session Duration Configurator */}
-              <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
-                <h4 style={{ fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Clock size={18} color="var(--accent-cyan)" />
-                  Per-Token Play Duration Configurator
-                </h4>
-
-                <form onSubmit={handleUpdateSessionDuration}>
-                  {settingsActionError && (
-                    <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
-                      {settingsActionError}
-                    </div>
-                  )}
-
-                  <div className="form-group">
-                    <label className="form-label">Stream Playing Duration per Token (Minutes)</label>
-                    <input 
-                      type="number" 
-                      className="form-input form-input-cyan" 
-                      min="1"
-                      max="480"
-                      value={configDurationMinutes}
-                      onChange={(e) => setConfigDurationMinutes(e.target.value)}
-                    />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      Current Rate: <strong>1 Token Key = {systemSettings.sessionDurationMinutes || 15} Minutes</strong> stream session
-                    </span>
-                  </div>
-
-                  <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
-                    Save Play Time Rate
-                  </button>
-                </form>
-              </div>
-
-              {/* Token Package Manager */}
-              <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                <h4 style={{ fontSize: '1.1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Coins size={18} color="var(--accent-purple)" />
-                  Key Shop Pricing & Package Manager
-                </h4>
-
-                <form onSubmit={handleCreatePackage} style={{ marginBottom: '2rem' }}>
-                  {packageActionError && (
-                    <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
-                      {packageActionError}
-                    </div>
-                  )}
-
-                  <div className="form-group">
-                    <label className="form-label">Package Title</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. Weekend Warrior Pack"
-                      value={newPkgTitle}
-                      onChange={(e) => setNewPkgTitle(e.target.value)}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">Token Keys Count</label>
-                      <input 
-                        type="number" 
-                        className="form-input" 
-                        min="1"
-                        value={newPkgTokens}
-                        onChange={(e) => setNewPkgTokens(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Price ($ USD)</label>
-                      <input 
-                        type="number" 
-                        step="0.01"
-                        className="form-input" 
-                        min="0.50"
-                        value={newPkgPrice}
-                        onChange={(e) => setNewPkgPrice(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Package Subtitle / Description</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. Best for long gaming sessions"
-                      value={newPkgDesc}
-                      onChange={(e) => setNewPkgDesc(e.target.value)}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                    <input 
-                      type="checkbox" 
-                      id="pkgRecommended" 
-                      checked={newPkgRecommended}
-                      onChange={(e) => setNewPkgRecommended(e.target.checked)}
-                    />
-                    <label htmlFor="pkgRecommended" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                      Highlight as "Best Value / Recommended"
-                    </label>
-                  </div>
-
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
-                    Add Token Package
-                  </button>
-                </form>
-
-                {/* Package Listing with Delete Action */}
-                <h4 style={{ fontSize: '0.9rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
-                  Active Shop Packages
-                </h4>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '250px', overflowY: 'auto' }}>
-                  {packages.map((pkg) => (
-                    <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.02)' }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#fff' }}>
-                          {pkg.title} {pkg.recommended && <span style={{ fontSize: '0.65rem', color: 'var(--accent-purple)', background: 'rgba(138,43,226,0.15)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>★ Recommended</span>}
+                        <div className="form-group">
+                          <label className="form-label">Genre Tag</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="e.g. Action RPG, Open World, Racing"
+                            value={newGameGenre}
+                            onChange={(e) => setNewGameGenre(e.target.value)}
+                          />
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {pkg.tokens} Keys | ${pkg.price?.toFixed(2)}
+
+                        <div className="form-group">
+                          <label className="form-label">Cover Image URL</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="https://..."
+                            value={newGameCover}
+                            onChange={(e) => setNewGameCover(e.target.value)}
+                          />
                         </div>
-                      </div>
-                      <button onClick={() => handleDeletePackage(pkg.id)} className="btn btn-secondary" style={{ padding: '0.4rem', border: 'none' }} title="Delete Package">
-                        <Trash2 size={16} color="var(--status-danger)" />
-                      </button>
+
+                        <div className="form-group">
+                          <label className="form-label">Game Description</label>
+                          <textarea 
+                            className="form-input" 
+                            rows="2"
+                            placeholder="Brief summary of gameplay highlights..."
+                            value={newGameDesc}
+                            onChange={(e) => setNewGameDesc(e.target.value)}
+                          />
+                        </div>
+
+                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
+                          Publish Game to Catalog
+                        </button>
+                      </form>
                     </div>
-                  ))}
+
+                    {/* Catalog Games List */}
+                    <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
+                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                        Active Catalog Titles ({games.length})
+                      </h4>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
+                        {games.map((g) => (
+                          <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <img src={g.coverUrl} alt={g.title} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
+                              <div>
+                                <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.9rem' }}>{g.title}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                                  Category: <span style={{ color: 'var(--accent-cyan)' }}>{g.categoryId.toUpperCase()}</span> | {g.tokenCost} Key(s)
+                                </div>
+                              </div>
+                            </div>
+                            <button onClick={() => handleDeleteGame(g.id)} className="btn btn-secondary" style={{ padding: '0.35rem 0.5rem', border: 'none' }}>
+                              <Trash2 size={14} color="var(--status-danger)" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              )}
 
-              </div>
+              {/* TAB 3: HARDWARE NODES CLUSTER */}
+              {adminTab === 'nodes' && (
+                <div className="animated-fade">
+                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Cpu size={22} color="var(--accent-cyan)" /> Physical & Virtual Hardware Nodes
+                  </h3>
 
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    {/* Add Machine Form */}
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
+                        Connect New Hardware Node
+                      </h4>
+
+                      <form onSubmit={handleCreateMachine}>
+                        {adminActionError && (
+                          <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                            {adminActionError}
+                          </div>
+                        )}
+
+                        <div className="form-group">
+                          <label className="form-label">Station Name</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="e.g. PS5 Physical Host 01"
+                            value={newMachineName}
+                            onChange={(e) => setNewMachineName(e.target.value)}
+                          />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Device Type</label>
+                            <select 
+                              className="form-input" 
+                              value={newMachineType}
+                              style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                              onChange={(e) => setNewMachineType(e.target.value)}
+                            >
+                              <option value="ps5">PlayStation 5</option>
+                              <option value="xbox">Xbox Series X</option>
+                              <option value="pc">Gaming PC</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Virtual IP / Address</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="192.168.1.100"
+                              value={newMachineIp}
+                              onChange={(e) => setNewMachineIp(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Specs Configuration */}
+                        <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Server Region / Location</label>
+                            <select 
+                              className="form-input" 
+                              value={newMachineRegion}
+                              style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                              onChange={(e) => setNewMachineRegion(e.target.value)}
+                            >
+                              <option value="Tokyo - Asia East">Tokyo - Asia East</option>
+                              <option value="Seattle - US West">Seattle - US West</option>
+                              <option value="Frankfurt - EU Central">Frankfurt - EU Central</option>
+                              <option value="London - EU West">London - EU West</option>
+                            </select>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group">
+                              <label className="form-label">CPU Spec</label>
+                              <input type="text" className="form-input" value={newMachineCpu} onChange={(e) => setNewMachineCpu(e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">GPU Spec</label>
+                              <input type="text" className="form-input" value={newMachineGpu} onChange={(e) => setNewMachineGpu(e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+                          Link Hardware Node
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Nodes Listing */}
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                        Connected Cluster Nodes ({machines.length})
+                      </h4>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
+                        {machines.map((m) => (
+                          <div key={m.id} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ fontWeight: 600, color: '#fff' }}>{m.name}</div>
+                              <button onClick={() => handleDeleteMachine(m.id)} className="btn btn-secondary" style={{ padding: '0.3rem 0.5rem' }}>
+                                <Trash2 size={14} color="var(--status-danger)" />
+                              </button>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '0.25rem' }}>
+                              Type: {m.type.toUpperCase()} | IP: {m.ipAddress} | Region: {m.regionTag}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: PRICING & TOKEN RATES */}
+              {adminTab === 'pricing' && (
+                <div className="animated-fade">
+                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Coins size={22} color="var(--accent-purple)" /> Pricing & Per-Token Session Configurator
+                  </h3>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    {/* Session Duration Configurator */}
+                    <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
+                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
+                        Per-Token Play Duration (Minutes)
+                      </h4>
+
+                      <form onSubmit={handleUpdateSessionDuration}>
+                        <div className="form-group">
+                          <label className="form-label">Minutes per Token Session</label>
+                          <input 
+                            type="number" 
+                            className="form-input form-input-cyan" 
+                            min="1"
+                            max="480"
+                            value={configDurationMinutes}
+                            onChange={(e) => setConfigDurationMinutes(e.target.value)}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                            Current Rate: <strong>1 Token = {systemSettings.sessionDurationMinutes || 15} Minutes</strong> stream session
+                          </span>
+                        </div>
+                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
+                          Save Session Rate
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Token Package Manager */}
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                      <h4 style={{ fontSize: '1rem', color: '#fff', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
+                        Add Shop Package
+                      </h4>
+
+                      <form onSubmit={handleCreatePackage} style={{ marginBottom: '1.5rem' }}>
+                        <div className="form-group">
+                          <label className="form-label">Package Title</label>
+                          <input type="text" className="form-input" placeholder="e.g. Pro Streamer Pack" value={newPkgTitle} onChange={(e) => setNewPkgTitle(e.target.value)} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Keys Count</label>
+                            <input type="number" className="form-input" min="1" value={newPkgTokens} onChange={(e) => setNewPkgTokens(e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Price ($ USD)</label>
+                            <input type="number" step="0.01" className="form-input" min="0.50" value={newPkgPrice} onChange={(e) => setNewPkgPrice(e.target.value)} />
+                          </div>
+                        </div>
+                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+                          Add Package
+                        </button>
+                      </form>
+
+                      {/* Package Listing */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {packages.map((pkg) => (
+                          <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+                            <div style={{ color: '#fff', fontSize: '0.85rem' }}>{pkg.title} ({pkg.tokens} Keys - ${pkg.price?.toFixed(2)})</div>
+                            <button onClick={() => handleDeletePackage(pkg.id)} className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem' }}>
+                              <Trash2 size={12} color="var(--status-danger)" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: LIVE STREAMS MONITOR */}
+              {adminTab === 'sessions' && (
+                <div className="animated-fade">
+                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Activity size={22} color="var(--accent-cyan)" /> Live Active Sessions & Kill Switch
+                  </h3>
+
+                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {adminSessions.length === 0 ? (
+                        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          No active player stream connections in progress.
+                        </div>
+                      ) : (
+                        adminSessions.map((sess) => (
+                          <div key={sess.id} className="glass-panel" style={{ padding: '1rem', borderLeft: '3px solid var(--accent-purple)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontWeight: 600, color: '#fff', fontSize: '1rem' }}>@{sess.username}</div>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '0.2rem' }}>
+                                Station: {sess.machineName} ({sess.machineType.toUpperCase()}) | Started: {new Date(sess.startTime).toLocaleTimeString()}
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => handleTerminateUserSession(sess.id)} 
+                              className="btn btn-secondary" 
+                              style={{ color: 'var(--status-danger)', borderColor: 'rgba(255,0,85,0.2)', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                            >
+                              Disconnect Player
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: REGISTERED PLAYERS */}
+              {adminTab === 'players' && (
+                <div className="animated-fade">
+                  <h3 style={{ fontSize: '1.5rem', color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Users size={22} color="var(--accent-cyan)" /> Registered Player Accounts ({adminUsersList.length})
+                  </h3>
+
+                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
+                      {adminUsersList.map((usr) => (
+                        <div key={usr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              @{usr.username} {usr.isAdmin && <span style={{ background: 'var(--accent-purple)', fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', color: '#fff' }}>ADMIN</span>}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                              ID: {usr.id} | Joined: {new Date(usr.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                            <Coins size={16} /> {usr.tokenBalance} Keys
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>

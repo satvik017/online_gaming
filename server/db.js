@@ -81,12 +81,32 @@ const SettingsSchema = new mongoose.Schema({
   sessionDurationMinutes: { type: Number, default: 15 } // duration in minutes per token session
 }, { timestamps: true });
 
+const CategorySchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true }, // PlayStation 5, Xbox Series X, Gaming PC
+  type: { type: String, required: true, unique: true }, // ps5, xbox, pc
+  icon: { type: String, default: 'Tv' },
+  description: { type: String, default: '' }
+}, { timestamps: true });
+
+const GameSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  categoryId: { type: String, required: true }, // ps5, xbox, pc
+  tokenCost: { type: Number, default: 1 },
+  genre: { type: String, default: 'Action / Adventure' },
+  coverUrl: { type: String, default: '' },
+  description: { type: String, default: '' }
+}, { timestamps: true });
+
 export const User = mongoose.model('User', UserSchema);
 export const Machine = mongoose.model('Machine', MachineSchema);
 export const Transaction = mongoose.model('Transaction', TransactionSchema);
 export const Session = mongoose.model('Session', SessionSchema);
 export const Package = mongoose.model('Package', PackageSchema);
 export const Settings = mongoose.model('Settings', SettingsSchema);
+export const Category = mongoose.model('Category', CategorySchema);
+export const Game = mongoose.model('Game', GameSchema);
 
 // Helper to generate IDs
 const generateId = (prefix) => `${prefix}_${Math.random().toString(36).substr(2, 9)}`;
@@ -220,6 +240,68 @@ const seedDb = async () => {
       await Settings.create({ key: 'global', sessionDurationMinutes: 15 });
       console.log('Default system settings seeded in MongoDB Atlas.');
     }
+
+    const categoryCount = await Category.countDocuments();
+    if (categoryCount === 0) {
+      await Category.create([
+        { id: 'cat_ps5', name: 'PlayStation 5', type: 'ps5', icon: 'Tv', description: 'Next-gen Sony 4K console gaming cluster' },
+        { id: 'cat_xbox', name: 'Xbox Series X', type: 'xbox', icon: 'Monitor', description: 'High-performance Microsoft Xbox gaming node array' },
+        { id: 'cat_pc', name: 'Liquid PC Rig', type: 'pc', icon: 'Laptop', description: 'Ultra-settings RTX 4090 Ray-Tracing cloud PC rigs' }
+      ]);
+      console.log('Default categories seeded in MongoDB Atlas.');
+    }
+
+    const gameCount = await Game.countDocuments();
+    if (gameCount === 0) {
+      await Game.create([
+        {
+          id: 'game_gtav',
+          title: 'Grand Theft Auto V (Expanded)',
+          categoryId: 'ps5',
+          tokenCost: 1,
+          genre: 'Open World Action',
+          coverUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
+          description: 'Experience Los Santos in ray-traced 60 FPS performance mode on PS5 Pro.'
+        },
+        {
+          id: 'game_spiderman2',
+          title: "Marvel's Spider-Man 2",
+          categoryId: 'ps5',
+          tokenCost: 1,
+          genre: 'Action / Superhero',
+          coverUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80',
+          description: 'Swing through New York as Peter Parker and Miles Morales with near-instant loading.'
+        },
+        {
+          id: 'game_gt7',
+          title: 'Gran Turismo 7',
+          categoryId: 'ps5',
+          tokenCost: 1,
+          genre: 'Racing Simulator',
+          coverUrl: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=600&auto=format&fit=crop&q=80',
+          description: 'Real Driving Simulator featuring over 400 cars and ultra-responsive haptic feedback.'
+        },
+        {
+          id: 'game_forza5',
+          title: 'Forza Horizon 5',
+          categoryId: 'xbox',
+          tokenCost: 1,
+          genre: 'Open World Racing',
+          coverUrl: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=600&auto=format&fit=crop&q=80',
+          description: 'Explore the vibrant open world landscapes of Mexico in 4K 120Hz on Xbox Series X.'
+        },
+        {
+          id: 'game_cyberpunk',
+          title: 'Cyberpunk 2077 (Path Tracing)',
+          categoryId: 'pc',
+          tokenCost: 2,
+          genre: 'Sci-Fi RPG',
+          coverUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&auto=format&fit=crop&q=80',
+          description: 'Full Ray Tracing Path Tracing Overdrive Mode powered by NVIDIA RTX 4090 DLSS 3.5.'
+        }
+      ]);
+      console.log('Default games catalog seeded in MongoDB Atlas.');
+    }
   } catch (err) {
     console.error('Error seeding MongoDB Atlas database:', err);
   }
@@ -228,6 +310,77 @@ const seedDb = async () => {
 // --- ASYNC DATABASE OPERATIONS ---
 
 export const dbOps = {
+  // Categories
+  getCategories: async () => {
+    return await Category.find().lean();
+  },
+
+  createCategory: async (catData) => {
+    const newCat = await Category.create({
+      id: generateId('cat'),
+      name: catData.name,
+      type: catData.type || 'ps5',
+      icon: catData.icon || 'Tv',
+      description: catData.description || ''
+    });
+    return newCat.toObject();
+  },
+
+  updateCategory: async (id, updates) => {
+    const updated = await Category.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean();
+    if (!updated) throw new Error('Category not found');
+    return updated;
+  },
+
+  deleteCategory: async (id) => {
+    const res = await Category.findOneAndDelete({ id });
+    if (!res) throw new Error('Category not found');
+    return true;
+  },
+
+  // Games Catalog
+  getGames: async () => {
+    return await Game.find().lean();
+  },
+
+  getGameById: async (id) => {
+    return await Game.findOne({ id }).lean();
+  },
+
+  getGamesByCategory: async (categoryId) => {
+    return await Game.find({ categoryId }).lean();
+  },
+
+  createGame: async (gameData) => {
+    const newGame = await Game.create({
+      id: generateId('game'),
+      title: gameData.title,
+      categoryId: gameData.categoryId || 'ps5',
+      tokenCost: parseInt(gameData.tokenCost) || 1,
+      genre: gameData.genre || 'Action / Adventure',
+      coverUrl: gameData.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
+      description: gameData.description || ''
+    });
+    return newGame.toObject();
+  },
+
+  updateGame: async (id, updates) => {
+    const updated = await Game.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean();
+    if (!updated) throw new Error('Game not found');
+    return updated;
+  },
+
+  deleteGame: async (id) => {
+    const res = await Game.findOneAndDelete({ id });
+    if (!res) throw new Error('Game not found');
+    return true;
+  },
+
+  // Users Management List (Admin)
+  getUsersList: async () => {
+    const users = await User.find({}, { passwordHash: 0 }).sort({ createdAt: -1 }).lean();
+    return users;
+  },
   // Token Packages
   getPackages: async () => {
     return await Package.find().lean();
