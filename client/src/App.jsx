@@ -24,13 +24,60 @@ import {
   LayoutDashboard,
   Users,
   Sparkles,
-  Filter
+  Filter,
+  Sun,
+  Moon,
+  ChevronDown,
+  Settings,
+  Key,
+  Edit3
 } from 'lucide-react';
 
 // Production Backend API & WebSockets URL (reads from VITE_BACKEND_URL env var, defaults to localhost:5050)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5050';
 
+// Deterministic Random Animal Avatar System for User Profile
+const ANIMAL_AVATARS = [
+  { emoji: '🦊', name: 'Cyber Fox', color: '#f97316' },
+  { emoji: '🦁', name: 'Alpha Lion', color: '#eab308' },
+  { emoji: '🐯', name: 'Neon Tiger', color: '#ea580c' },
+  { emoji: '🐼', name: 'Zen Panda', color: '#06b6d4' },
+  { emoji: '🐺', name: 'Shadow Wolf', color: '#6366f1' },
+  { emoji: '🦅', name: 'Sky Eagle', color: '#3b82f6' },
+  { emoji: '🐉', name: 'Storm Dragon', color: '#8b5cf6' },
+  { emoji: '🦄', name: 'Mystic Unicorn', color: '#ec4899' }
+];
+
+const getAnimalAvatar = (username) => {
+  if (!username) return ANIMAL_AVATARS[0];
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % ANIMAL_AVATARS.length;
+  return ANIMAL_AVATARS[index];
+};
+
 function App() {
+  // Dynamic Theme (light / dark)
+  const [theme, setTheme] = useState(localStorage.getItem('vortex_theme') || 'light');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editProfileError, setEditProfileError] = useState('');
+  const [editProfileSuccess, setEditProfileSuccess] = useState('');
+
+  // Apply theme data attribute to document root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('vortex_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
+
   // Navigation & Authentication
   const [token, setToken] = useState(localStorage.getItem('vortex_token') || '');
   const [user, setUser] = useState(null);
@@ -998,9 +1045,10 @@ function App() {
           
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => setCurrentView(token ? 'lobby' : 'landing')}>
-            <Gamepad2 size={32} color="var(--accent-cyan)" className="hover-glitch" />
-            <h1 style={{ fontSize: '1.6rem', color: '#fff', background: 'linear-gradient(90deg, #fff, var(--text-secondary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
-              VORTEX <span style={{ color: 'var(--accent-cyan)' }}>PLAY</span>
+            <Gamepad2 size={32} color="var(--accent-purple)" className="hover-glitch" />
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.06em', margin: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ color: 'var(--logo-vortex)', fontWeight: 900 }}>VORTEX</span>
+              <span style={{ color: 'var(--accent-cyan)', fontWeight: 900 }}>PLAY</span>
             </h1>
           </div>
 
@@ -1040,24 +1088,150 @@ function App() {
           {/* User Section / Auth State */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {user ? (
-              <>
-                {/* Wallet Token Pill */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0, 243, 255, 0.08)', border: '1px solid rgba(0, 243, 255, 0.2)', padding: '0.4rem 0.8rem', borderRadius: '20px' }}>
-                  <Coins size={16} color="var(--accent-cyan)" />
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--accent-cyan)' }}>
-                    {user.tokenBalance} Tokens
-                  </span>
-                </div>
-                {/* User Info & Signout */}
+              <div style={{ position: 'relative' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
-                    @{user.username}
-                  </span>
-                  <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.4rem', border: 'none' }} title="Log Out">
-                    <LogOut size={16} color="var(--status-danger)" />
+                  {/* Wallet Token Pill */}
+                  <div 
+                    onClick={() => setCurrentView('wallet')} 
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.2)', padding: '0.4rem 0.85rem', borderRadius: '20px', cursor: 'pointer' }}
+                  >
+                    <Coins size={16} color="var(--accent-cyan)" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                      {user.tokenBalance} Keys
+                    </span>
+                  </div>
+
+                  {/* Animal Avatar Button */}
+                  <button 
+                    onClick={() => setShowProfileMenu((prev) => !prev)} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.5rem', 
+                      background: 'var(--bg-tertiary)', 
+                      border: '1px solid var(--border-color)', 
+                      padding: '0.3rem 0.6rem 0.3rem 0.3rem', 
+                      borderRadius: '30px', 
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <div style={{ 
+                      width: '34px', 
+                      height: '34px', 
+                      borderRadius: '50%', 
+                      background: getAnimalAvatar(user.username).color, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      fontSize: '1.2rem',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    }}>
+                      {getAnimalAvatar(user.username).emoji}
+                    </div>
+                    <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                      @{user.username}
+                    </span>
+                    <ChevronDown size={14} color="var(--text-muted)" />
                   </button>
                 </div>
-              </>
+
+                {/* Profile Dropdown Menu */}
+                {showProfileMenu && (
+                  <div className="animated-fade glass-panel" style={{ 
+                    position: 'absolute', 
+                    top: '52px', 
+                    right: 0, 
+                    width: '260px', 
+                    padding: '1rem', 
+                    zIndex: 1000, 
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                    border: '1px solid var(--border-color)'
+                  }}>
+                    {/* User Summary Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.85rem', marginBottom: '0.85rem', borderBottom: '1px solid var(--border-color)' }}>
+                      <div style={{ 
+                        width: '42px', 
+                        height: '42px', 
+                        borderRadius: '50%', 
+                        background: getAnimalAvatar(user.username).color, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontSize: '1.5rem'
+                      }}>
+                        {getAnimalAvatar(user.username).emoji}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>@{user.username}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 600, textTransform: 'uppercase' }}>
+                          {getAnimalAvatar(user.username).name} • {user.isAdmin ? 'Super Admin' : 'Player Pilot'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dropdown Options */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {/* Theme Toggle Button */}
+                      <button 
+                        onClick={() => {
+                          toggleTheme();
+                        }}
+                        className="btn btn-secondary"
+                        style={{ width: '100%', justifyContent: 'space-between', padding: '0.6rem 0.85rem', fontSize: '0.8rem' }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {theme === 'light' ? <Sun size={15} color="#d97706" /> : <Moon size={15} color="var(--accent-purple)" />}
+                          Theme Mode
+                        </span>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
+                          {theme === 'light' ? 'Light ☀️' : 'Dark 🌙'}
+                        </span>
+                      </button>
+
+                      {/* Token Settings / Key Shop */}
+                      <button 
+                        onClick={() => {
+                          setCurrentView('wallet');
+                          setShowProfileMenu(false);
+                        }}
+                        className="btn btn-secondary"
+                        style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem' }}
+                      >
+                        <Coins size={15} color="var(--accent-cyan)" />
+                        Tokens & Key Shop
+                      </button>
+
+                      {/* Edit Profile Settings */}
+                      <button 
+                        onClick={() => {
+                          setShowEditProfileModal(true);
+                          setShowProfileMenu(false);
+                        }}
+                        className="btn btn-secondary"
+                        style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem' }}
+                      >
+                        <Settings size={15} color="var(--accent-purple)" />
+                        Edit Profile Settings
+                      </button>
+
+                      {/* Logout */}
+                      <button 
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          handleLogout();
+                        }}
+                        className="btn btn-secondary"
+                        style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem', color: 'var(--status-danger)', borderColor: 'rgba(225, 29, 72, 0.2)' }}
+                      >
+                        <LogOut size={15} color="var(--status-danger)" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button onClick={() => setCurrentView('login')} className="btn btn-secondary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.85rem' }}>
@@ -2247,6 +2421,99 @@ function App() {
         )}
 
       </main>
+
+      {/* EDIT PROFILE SETTINGS MODAL */}
+      {showEditProfileModal && user && (
+        <div className="animated-fade" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1050, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+          <div className="glass-panel" style={{ padding: '2rem', width: '100%', maxWidth: '440px', position: 'relative' }}>
+            
+            <button 
+              onClick={() => setShowEditProfileModal(false)} 
+              className="btn btn-secondary" 
+              style={{ position: 'absolute', top: '1rem', right: '1rem', padding: '0.25rem 0.5rem', border: 'none' }}
+            >
+              ✕
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+              <div style={{ 
+                width: '52px', 
+                height: '52px', 
+                borderRadius: '50%', 
+                background: getAnimalAvatar(user.username).color, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                fontSize: '2rem',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              }}>
+                {getAnimalAvatar(user.username).emoji}
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', margin: 0 }}>@{user.username}</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--accent-purple)', fontWeight: 600, margin: 0 }}>
+                  {getAnimalAvatar(user.username).name} Avatar Active
+                </p>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Account Handle</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                value={user.username}
+                disabled
+                style={{ opacity: 0.8 }}
+              />
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Bound to player record ID #{user.id}.</span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Token Key Balance</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-tertiary)', padding: '0.75rem 1rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                <Coins size={18} color="var(--accent-cyan)" />
+                <span style={{ fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                  {user.tokenBalance} Keys Available
+                </span>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Theme Preference</label>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setTheme('light')} 
+                  className={`btn ${theme === 'light' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }}
+                >
+                  ☀️ Light White
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setTheme('dark')} 
+                  className={`btn ${theme === 'dark' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }}
+                >
+                  🌙 Dark Mode
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.75rem' }}>
+              <button 
+                onClick={() => setShowEditProfileModal(false)} 
+                className="btn btn-primary" 
+                style={{ padding: '0.6rem 1.5rem', fontSize: '0.85rem' }}
+              >
+                Save Settings
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', padding: '1.5rem', textAlign: 'center', background: 'rgba(0,0,0,0.2)' }}>

@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
 
-:root {
+:root, [data-theme="light"] {
   /* Crisp Light Theme Colors (White Mode) */
   --bg-primary: hsl(210, 30%, 98%);
   --bg-secondary: hsl(0, 0%, 100%);
@@ -17,6 +17,10 @@
   --text-secondary: hsl(215, 25%, 35%);
   --text-muted: hsl(215, 16%, 50%);
   
+  --logo-vortex: #0f172a;
+  --panel-bg: rgba(255, 255, 255, 0.94);
+  --panel-shadow: 0 4px 24px 0 rgba(15, 23, 42, 0.08);
+  
   --status-success: hsl(158, 84%, 39%);
   --status-warning: hsl(38, 92%, 50%);
   --status-danger: hsl(346, 84%, 61%);
@@ -30,6 +34,32 @@
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+  /* Dynamic Dark Mode Colors */
+  --bg-primary: hsl(230, 25%, 7%);
+  --bg-secondary: hsl(230, 20%, 11%);
+  --bg-tertiary: hsl(230, 20%, 15%);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(138, 43, 226, 0.3);
+  
+  --accent-purple: hsl(270, 95%, 60%);
+  --accent-purple-glow: rgba(138, 43, 226, 0.4);
+  --accent-cyan: hsl(185, 95%, 48%);
+  --accent-cyan-glow: rgba(0, 243, 255, 0.4);
+  
+  --text-primary: hsl(0, 0%, 98%);
+  --text-secondary: hsl(230, 15%, 70%);
+  --text-muted: hsl(230, 10%, 55%);
+  
+  --logo-vortex: #ffffff;
+  --panel-bg: rgba(17, 18, 25, 0.88);
+  --panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+
+  --status-success: hsl(145, 80%, 45%);
+  --status-warning: hsl(45, 90%, 50%);
+  --status-danger: hsl(345, 85%, 55%);
 }
 
 /* Global Reset & Base */
@@ -86,14 +116,14 @@ p {
   background-color: var(--bg-primary);
 }
 
-/* Light Glassmorphism Utility */
+/* Light & Dark Glassmorphism Utility */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--panel-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 0 4px 20px 0 rgba(15, 23, 42, 0.06);
+  box-shadow: var(--panel-shadow);
   transition: var(--transition-normal);
 }
 
