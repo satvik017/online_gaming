@@ -30,8 +30,11 @@ import {
   ChevronDown,
   Settings,
   Key,
-  Edit3
+  Edit3,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
+import { uploadGameCoverToSupabase, isSupabaseConfigured } from './supabase.js';
 
 // Production Backend API & WebSockets URL (reads from VITE_BACKEND_URL env var, defaults to localhost:5050)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5050';
@@ -157,6 +160,42 @@ function App() {
   const [newGameCover, setNewGameCover] = useState('');
   const [newGameDesc, setNewGameDesc] = useState('');
   const [gameActionError, setGameActionError] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // File Upload Handler for Supabase Storage
+  const handleSupabaseFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, WEBP, etc.).');
+      return;
+    }
+
+    setUploadingImage(true);
+    setGameActionError('');
+
+    try {
+      if (isSupabaseConfigured) {
+        // Upload directly to Supabase Storage bucket 'game-covers'
+        const publicUrl = await uploadGameCoverToSupabase(file);
+        setNewGameCover(publicUrl);
+      } else {
+        // Convert to data URL preview if Supabase keys aren't set in environment variables
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setNewGameCover(reader.result);
+          setUploadingImage(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    } catch (err) {
+      setGameActionError(`Supabase Upload Notice: ${err.message}`);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   // Admin Package & Settings Config State
   const [packages, setPackages] = useState([
@@ -2098,14 +2137,52 @@ function App() {
                         </div>
 
                         <div className="form-group">
-                          <label className="form-label">Cover Image URL</label>
-                          <input 
-                            type="text" 
-                            className="form-input" 
-                            placeholder="https://..."
-                            value={newGameCover}
-                            onChange={(e) => setNewGameCover(e.target.value)}
-                          />
+                          <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Cover Image URL / Supabase Storage Upload</span>
+                            {uploadingImage && <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)' }}>Uploading to Supabase...</span>}
+                          </label>
+
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="https://... or select image file below"
+                              value={newGameCover}
+                              style={{ flex: 1 }}
+                              onChange={(e) => setNewGameCover(e.target.value)}
+                            />
+
+                            <label 
+                              className="btn btn-secondary" 
+                              style={{ 
+                                padding: '0.6rem 0.85rem', 
+                                fontSize: '0.8rem', 
+                                cursor: uploadingImage ? 'not-allowed' : 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title="Upload local image file from device to Supabase Storage"
+                            >
+                              <Upload size={16} color="var(--accent-cyan)" />
+                              {uploadingImage ? 'Uploading...' : 'Browse Device'}
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                disabled={uploadingImage}
+                                onChange={handleSupabaseFileUpload}
+                                style={{ display: 'none' }}
+                              />
+                            </label>
+                          </div>
+
+                          {newGameCover && (
+                            <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <img src={newGameCover} alt="Cover Preview" style={{ width: '45px', height: '45px', borderRadius: '4px', objectFit: 'cover', border: '1px solid var(--border-color)' }} />
+                              <span style={{ fontSize: '0.7rem', color: 'var(--status-success)', fontFamily: 'var(--font-mono)' }}>✓ Image Ready</span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="form-group">
