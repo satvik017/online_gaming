@@ -313,9 +313,13 @@ app.post('/api/games/:id/play', authenticateToken, async (req, res) => {
     const game = await dbOps.getGameById(gameId);
     if (!game) return res.status(404).json({ error: 'Game not found in catalog' });
 
-    // Find available machine matching game category
+    // Find available machine matching game category (PS4 games can run on PS4 or PS5 hardware nodes)
     const machines = await dbOps.getMachines();
-    const availableMachine = machines.find(m => m.status === 'available' && (m.type === game.categoryId || m.type.includes(game.categoryId)));
+    const availableMachine = machines.find(m => m.status === 'available' && (
+      m.type === game.categoryId || 
+      m.type.includes(game.categoryId) ||
+      (game.categoryId === 'ps4' && (m.type === 'ps5' || m.type === 'ps4'))
+    ));
 
     if (!availableMachine) {
       return res.status(400).json({ error: `All ${game.categoryId.toUpperCase()} gaming stations are currently occupied. Please wait a moment.` });

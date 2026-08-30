@@ -150,12 +150,13 @@ function App() {
 
   // Category-Wise Games Catalog State
   const [categories, setCategories] = useState([
-    { id: 'cat_ps5', name: 'PlayStation 5', type: 'ps5', icon: 'Tv' },
-    { id: 'cat_xbox', name: 'Xbox Series X', type: 'xbox', icon: 'Monitor' },
-    { id: 'cat_pc', name: 'Liquid PC Rig', type: 'pc', icon: 'Laptop' }
+    { id: 'cat_ps5', name: 'PlayStation 5', type: 'ps5', icon: 'Tv', desc: 'Next-Gen 4K Ray-Tracing PS5 Pro Hardware Nodes' },
+    { id: 'cat_ps4', name: 'PlayStation 4', type: 'ps4', icon: 'Tv', desc: 'Classic PS4 Exclusives & Remastered Hits' },
+    { id: 'cat_xbox', name: 'Xbox Series X', type: 'xbox', icon: 'Monitor', desc: 'High-framerate 120Hz Xbox Cloud Clusters' },
+    { id: 'cat_pc', name: 'Liquid PC Rig', type: 'pc', icon: 'Laptop', desc: 'Ultra-spec RTX 4090 Ray-Tracing Liquid PC Arrays' }
   ]);
   const [games, setGames] = useState([]);
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState('all');
+  const [selectedLobbyCategory, setSelectedLobbyCategory] = useState(null); // null = Category Selection Cards, 'ps5'|'ps4'|'xbox'|'pc' = Selected Games Catalog
   const [launchingGameId, setLaunchingGameId] = useState(null);
 
   // Admin Sidebar & Users State
@@ -1553,57 +1554,23 @@ function App() {
 
             </div>
 
-            {/* DYNAMIC POPULAR GAMES SPOTLIGHT FROM DATABASE */}
+            {/* DYNAMIC POPULAR GAMES SPOTLIGHT FROM DATABASE (OVERVIEW 4 TITLES ONLY) */}
             <div id="popular-games-section" style={{ marginTop: '5rem', marginBottom: '5rem' }}>
               <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-purple)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
-                  <Flame size={18} /> Featured Library
+                  <Flame size={18} /> Featured Library Overview
                 </div>
                 <h3 style={{ fontSize: '2.2rem', color: 'var(--text-primary)', fontWeight: 800 }}>
-                  POPULAR CLOUD GAMES CATALOG
+                  POPULAR GAMES OVERVIEW
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '600px', margin: '0.5rem auto 0 auto' }}>
-                  Browse title categories hosted across live physical PS5 consoles, Xbox arrays, and liquid PC rigs.
+                  Top trending titles hosted on cloud console arrays. Log in to explore full hardware category catalogs.
                 </p>
               </div>
 
-              {/* Category Filter Pills on Home Screen */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
-                <button
-                  onClick={() => setHomeCategoryFilter('all')}
-                  className={`btn ${homeCategoryFilter === 'all' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', gap: '0.4rem' }}
-                >
-                  <Sparkles size={16} /> All Games ({games.length})
-                </button>
-                <button
-                  onClick={() => setHomeCategoryFilter('ps5')}
-                  className={`btn ${homeCategoryFilter === 'ps5' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', gap: '0.4rem' }}
-                >
-                  <Tv size={16} /> PlayStation 5 ({games.filter(g => g.categoryId === 'ps5').length})
-                </button>
-                <button
-                  onClick={() => setHomeCategoryFilter('xbox')}
-                  className={`btn ${homeCategoryFilter === 'xbox' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', gap: '0.4rem' }}
-                >
-                  <Monitor size={16} /> Xbox Series X ({games.filter(g => g.categoryId === 'xbox').length})
-                </button>
-                <button
-                  onClick={() => setHomeCategoryFilter('pc')}
-                  className={`btn ${homeCategoryFilter === 'pc' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', gap: '0.4rem' }}
-                >
-                  <Cpu size={16} /> Liquid PC Rigs ({games.filter(g => g.categoryId === 'pc').length})
-                </button>
-              </div>
-
-              {/* Games Grid Display */}
+              {/* Games Grid Display (Direct Overview: Top 4 Games Only) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                {games
-                  .filter(g => homeCategoryFilter === 'all' || g.categoryId === homeCategoryFilter)
-                  .map((game) => {
+                {games.slice(0, 4).map((game) => {
                     const catBadge = game.categoryId === 'ps5' ? 'PS5 PRO' : game.categoryId === 'xbox' ? 'XBOX SERIES X' : 'RTX 4090 PC';
                     const catColor = game.categoryId === 'ps5' ? 'var(--accent-cyan)' : game.categoryId === 'xbox' ? 'var(--status-success)' : 'var(--accent-purple)';
 
@@ -1846,141 +1813,240 @@ function App() {
           </div>
         )}
 
-        {/* LOBBY / CATEGORY-WISE GAMES CATALOG GRID */}
+        {/* LOBBY / CATEGORY CARDS & GAMES CATALOG */}
         {currentView === 'lobby' && (
           <div className="animated-fade">
-            {/* Header info */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            
+            {/* STAGE 1: CATEGORY CARDS VIEW (When no category is selected yet) */}
+            {selectedLobbyCategory === null ? (
               <div>
-                <h3 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <Gamepad2 size={28} color="var(--accent-cyan)" />
-                  Cloud Gaming Catalog
-                </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                  Select a title to stream. Spending 1 Token key instantly connects you to a high-speed host node.
-                </p>
-              </div>
-              
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', padding: '0.5rem 1rem', borderRadius: '8px', textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active Cluster Stations</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--status-success)', fontFamily: 'var(--font-mono)' }}>
-                    {machines.filter(m => m.status === 'available').length} / {machines.length} Ready
+                {/* Header info */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <Gamepad2 size={28} color="var(--accent-cyan)" />
+                      Console Hardware Categories
+                    </h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                      Select a console category to browse hosted titles. Spending 1 Token Key launches your high-speed cloud stream.
+                    </p>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '0.6rem 1.2rem', borderRadius: '10px', textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Active Stations</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-success)', fontFamily: 'var(--font-mono)' }}>
+                        {machines.filter(m => m.status === 'available').length} / {machines.length} Ready
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Category Filter Tabs */}
-            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-              <button 
-                onClick={() => setActiveCategoryFilter('all')}
-                className={`btn ${activeCategoryFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}
-              >
-                🎮 All Games ({games.length})
-              </button>
-              {categories.map((cat) => {
-                const catGameCount = games.filter(g => g.categoryId === cat.type).length;
-                const isActive = activeCategoryFilter === cat.type;
-                return (
-                  <button 
-                    key={cat.id}
-                    onClick={() => setActiveCategoryFilter(cat.type)}
-                    className={`btn ${isActive ? 'btn-cyan' : 'btn-secondary'}`}
-                    style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                  >
-                    {cat.type === 'ps5' ? <Tv size={16} /> : cat.type === 'xbox' ? <Monitor size={16} /> : <Laptop size={16} />}
-                    {cat.name} ({catGameCount})
-                  </button>
-                );
-              })}
-            </div>
+                {/* Category Cards Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '1.75rem', marginBottom: '3rem' }}>
+                  {categories.map((cat) => {
+                    const catGames = games.filter(g => g.categoryId === cat.type);
+                    const matchingMachines = machines.filter(m => m.type === cat.type || (cat.type === 'ps4' && m.type === 'ps5'));
+                    const availableMachines = matchingMachines.filter(m => m.status === 'available').length;
+                    
+                    const themeColor = cat.type === 'ps5' ? 'var(--accent-cyan)' : cat.type === 'ps4' ? 'var(--accent-purple)' : cat.type === 'xbox' ? '#107C10' : 'var(--accent-cyan)';
+                    const CategoryIcon = cat.type === 'xbox' ? Monitor : cat.type === 'pc' ? Laptop : Tv;
 
-            {/* Games Grid Catalog */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1.5rem' }}>
-              {games.filter(g => activeCategoryFilter === 'all' || g.categoryId === activeCategoryFilter).length === 0 ? (
-                <div className="glass-panel" style={{ padding: '3rem', gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  No games available in this category catalog.
-                </div>
-              ) : (
-                games.filter(g => activeCategoryFilter === 'all' || g.categoryId === activeCategoryFilter).map((game) => {
-                  const categoryObj = categories.find(c => c.type === game.categoryId);
-                  const matchingMachines = machines.filter(m => m.type === game.categoryId);
-                  const availableCount = matchingMachines.filter(m => m.status === 'available').length;
-                  const isBusy = availableCount === 0;
+                    return (
+                      <div 
+                        key={cat.id} 
+                        onClick={() => setSelectedLobbyCategory(cat.type)}
+                        className="glass-panel" 
+                        style={{ 
+                          padding: '1.75rem', 
+                          borderRadius: '16px', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          cursor: 'pointer',
+                          position: 'relative',
+                          border: `1px solid var(--border-color)`,
+                          transition: 'transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-4px)';
+                          e.currentTarget.style.borderColor = themeColor;
+                          e.currentTarget.style.boxShadow = `0 10px 25px rgba(0, 0, 0, 0.15)`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.borderColor = 'var(--border-color)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        {/* Top Category Icon & Station Pill */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                          <div style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '12px', border: `1px solid ${themeColor}` }}>
+                            <CategoryIcon size={32} color={themeColor} />
+                          </div>
+                          
+                          <div style={{ background: availableMachines > 0 ? 'rgba(0, 255, 170, 0.1)' : 'rgba(255, 170, 0, 0.1)', border: availableMachines > 0 ? '1px solid var(--status-success)' : '1px solid var(--status-warning)', padding: '0.25rem 0.6rem', borderRadius: '20px', fontSize: '0.7rem', color: availableMachines > 0 ? 'var(--status-success)' : 'var(--status-warning)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                            {availableMachines > 0 ? `${availableMachines} Stations Online` : 'Stations Busy'}
+                          </div>
+                        </div>
 
-                  return (
-                    <div 
-                      key={game.id} 
-                      className="glass-panel cyan-hover" 
-                      style={{ 
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        border: '1px solid var(--border-color)',
-                        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                      }}
-                    >
-                      {/* Game Cover Image Header */}
-                      <div style={{ height: '160px', width: '100%', position: 'relative', overflow: 'hidden', background: '#12141d' }}>
-                        <img 
-                          src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
-                          alt={game.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
-                        />
-                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95), transparent 70%)' }} />
+                        {/* Title & Description */}
+                        <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                          {cat.name}
+                        </h4>
                         
-                        {/* Category Badge Pill */}
-                        <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          {game.categoryId === 'ps5' ? <Tv size={12} color="var(--accent-cyan)" /> : game.categoryId === 'xbox' ? <Monitor size={12} color="#107C10" /> : <Laptop size={12} color="var(--accent-purple)" />}
-                          <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: '#fff' }}>
-                            {categoryObj?.name || game.categoryId}
-                          </span>
-                        </div>
-
-                        {/* Availability Pill */}
-                        <div style={{ position: 'absolute', top: '10px', right: '10px', background: availableCount > 0 ? 'rgba(0, 255, 170, 0.15)' : 'rgba(255, 170, 0, 0.15)', border: availableCount > 0 ? '1px solid var(--status-success)' : '1px solid var(--status-warning)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', color: availableCount > 0 ? 'var(--status-success)' : 'var(--status-warning)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                          {availableCount > 0 ? `${availableCount} Ready` : 'Busy'}
-                        </div>
-                      </div>
-
-                      {/* Game Info Body */}
-                      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.25rem' }}>
-                          {game.genre || 'Action'}
-                        </div>
-                        <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>{game.title}</h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {game.description || 'Stream high-definition gameplay on low-latency cloud nodes.'}
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.5rem', flex: 1 }}>
+                          {cat.desc || `Browse hosted games for ${cat.name} hardware node cluster.`}
                         </p>
 
-                        {/* Footer: Token Cost & Play Button */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-                          <div>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Key Cost</span>
-                            <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1rem', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                              <Coins size={14} color="var(--accent-cyan)" />
-                              {game.tokenCost || 1} Token <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>/ {systemSettings.sessionDurationMinutes || 15}m</span>
-                            </span>
-                          </div>
+                        {/* Card Footer */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                            {catGames.length} Game Title{catGames.length !== 1 ? 's' : ''}
+                          </span>
 
                           <button 
-                            onClick={() => handleLaunchGame(game)}
-                            disabled={launchingGameId === game.id || isBusy}
-                            className={`btn ${availableCount > 0 ? 'btn-cyan' : 'btn-secondary'}`}
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                            className="btn btn-cyan" 
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', gap: '0.4rem' }}
                           >
-                            <Play size={12} fill={availableCount > 0 ? '#0b0c10' : 'none'} />
-                            {launchingGameId === game.id ? 'Connecting...' : (availableCount > 0 ? 'Play Stream' : 'All Busy')}
+                            Explore Games <ArrowRight size={14} />
                           </button>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+
+              /* STAGE 2: SELECTED CATEGORY GAMES CATALOG VIEW */
+              <div>
+                {/* Top Bar with Back Button & Selected Category Title */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button 
+                      onClick={() => setSelectedLobbyCategory(null)} 
+                      className="btn btn-secondary" 
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                    >
+                      ← Back to Categories
+                    </button>
+                    <div>
+                      <h3 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        {selectedLobbyCategory === 'ps5' ? <Tv size={26} color="var(--accent-cyan)" /> : selectedLobbyCategory === 'ps4' ? <Tv size={26} color="var(--accent-purple)" /> : selectedLobbyCategory === 'xbox' ? <Monitor size={26} color="#107C10" /> : <Laptop size={26} color="var(--accent-cyan)" />}
+                        {categories.find(c => c.type === selectedLobbyCategory)?.name || selectedLobbyCategory.toUpperCase()} Games
+                      </h3>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        Showing games hosted on {selectedLobbyCategory.toUpperCase()} console stations.
+                      </p>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  </div>
+
+                  {/* Category Switcher Pills */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {categories.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedLobbyCategory(c.type)}
+                        className={`btn ${selectedLobbyCategory === c.type ? 'btn-cyan' : 'btn-secondary'}`}
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem' }}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Games Grid for Selected Category */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1.5rem' }}>
+                  {games.filter(g => g.categoryId === selectedLobbyCategory).length === 0 ? (
+                    <div className="glass-panel" style={{ padding: '3rem', gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>No games published under {categories.find(c => c.type === selectedLobbyCategory)?.name} yet.</p>
+                      <button onClick={() => setSelectedLobbyCategory(null)} className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}>
+                        Select Another Category
+                      </button>
+                    </div>
+                  ) : (
+                    games.filter(g => g.categoryId === selectedLobbyCategory).map((game) => {
+                      const matchingMachines = machines.filter(m => m.type === game.categoryId || (game.categoryId === 'ps4' && m.type === 'ps5'));
+                      const availableCount = matchingMachines.filter(m => m.status === 'available').length;
+                      const isBusy = availableCount === 0;
+
+                      return (
+                        <div 
+                          key={game.id} 
+                          className="glass-panel cyan-hover" 
+                          style={{ 
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '14px',
+                            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                          }}
+                        >
+                          {/* Game Cover Image Header */}
+                          <div style={{ height: '160px', width: '100%', position: 'relative', overflow: 'hidden', background: '#12141d' }}>
+                            <img 
+                              src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
+                              alt={game.title}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+                            />
+                            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95), transparent 70%)' }} />
+                            
+                            {/* Category Badge Pill */}
+                            <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <Tv size={12} color="var(--accent-cyan)" />
+                              <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: '#fff' }}>
+                                {game.categoryId.toUpperCase()}
+                              </span>
+                            </div>
+
+                            {/* Availability Pill */}
+                            <div style={{ position: 'absolute', top: '10px', right: '10px', background: availableCount > 0 ? 'rgba(0, 255, 170, 0.15)' : 'rgba(255, 170, 0, 0.15)', border: availableCount > 0 ? '1px solid var(--status-success)' : '1px solid var(--status-warning)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', color: availableCount > 0 ? 'var(--status-success)' : 'var(--status-warning)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                              {availableCount > 0 ? `${availableCount} Ready` : 'Busy'}
+                            </div>
+                          </div>
+
+                          {/* Game Info Body */}
+                          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.25rem' }}>
+                              {game.genre || 'Action'}
+                            </div>
+                            <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>{game.title}</h4>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                              {game.description || 'Stream high-definition gameplay on low-latency cloud nodes.'}
+                            </p>
+
+                            {/* Footer: Token Cost & Play Button */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+                              <div>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Key Cost</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1rem', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                  <Coins size={14} color="var(--accent-cyan)" />
+                                  {game.tokenCost || 1} Token <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>/ {systemSettings.sessionDurationMinutes || 15}m</span>
+                                </span>
+                              </div>
+
+                              <button 
+                                onClick={() => handleLaunchGame(game)}
+                                disabled={launchingGameId === game.id || isBusy}
+                                className={`btn ${availableCount > 0 ? 'btn-cyan' : 'btn-secondary'}`}
+                                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                              >
+                                <Play size={12} fill={availableCount > 0 ? '#0b0c10' : 'none'} />
+                                {launchingGameId === game.id ? 'Connecting...' : (availableCount > 0 ? 'Play Stream' : 'All Busy')}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+            )}
+
           </div>
         )}
 
@@ -2540,6 +2606,7 @@ function App() {
                               onChange={(e) => setNewGameCategory(e.target.value)}
                             >
                               <option value="ps5">PlayStation 5</option>
+                              <option value="ps4">PlayStation 4</option>
                               <option value="xbox">Xbox Series X</option>
                               <option value="pc">Liquid Gaming PC</option>
                             </select>
