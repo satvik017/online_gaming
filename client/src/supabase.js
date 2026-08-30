@@ -36,6 +36,9 @@ export async function uploadGameCoverToSupabase(file) {
     if (error.message?.toLowerCase().includes('bucket not found') || error.error === 'Bucket not found') {
       throw new Error('Supabase bucket "game-covers" not found. Please create a public bucket named "game-covers" in your Supabase Dashboard -> Storage.');
     }
+    if (error.message?.toLowerCase().includes('row-level security') || error.message?.toLowerCase().includes('row violates')) {
+      throw new Error('Row-Level Security (RLS) Policy Error: Please enable INSERT access for the "game-covers" bucket in your Supabase Dashboard -> Storage -> Policies, or run SQL: CREATE POLICY "Allow Public Uploads" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = \'game-covers\');');
+    }
     throw new Error(error.message || 'Failed to upload image to Supabase Storage');
   }
 
