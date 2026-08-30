@@ -187,13 +187,13 @@ p {
 }
 
 .btn-secondary {
-  background: #ffffff;
+  background: var(--bg-tertiary);
   color: var(--text-primary);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border-color);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
   border-color: var(--accent-cyan);
 }
 
@@ -220,8 +220,8 @@ p {
 }
 
 .form-input {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   color: var(--text-primary);
   padding: 0.75rem 1rem;
