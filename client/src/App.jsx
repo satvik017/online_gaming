@@ -175,6 +175,12 @@ function App() {
   const [gameActionError, setGameActionError] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Admin Machine Category Form State
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatType, setNewCatType] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('Tv');
+
   // File Upload Handler for Supabase Storage
   const handleSupabaseFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -987,6 +993,49 @@ function App() {
       alert('Node added and linked to virtual cluster with hardware specs.');
     } catch (err) {
       setAdminActionError(err.message);
+    }
+  };
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    setAdminActionError('');
+    if (!newCatName || !newCatType) {
+      setAdminActionError('Category Name and Category Type identifier slug are required');
+      return;
+    }
+
+    const typeSlug = newCatType.toLowerCase().trim().replace(/\s+/g, '_');
+
+    try {
+      await apiFetch('/api/categories', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: newCatName,
+          type: typeSlug,
+          icon: newCatIcon,
+          description: newCatDesc || `${newCatName} hardware streaming category`
+        })
+      });
+
+      setNewCatName('');
+      setNewCatType('');
+      setNewCatDesc('');
+      fetchAdminData();
+      alert(`Machine Category "${newCatName}" (${typeSlug}) added successfully!`);
+    } catch (err) {
+      setAdminActionError(err.message);
+    }
+  };
+
+  const handleDeleteCategory = async (catId) => {
+    if (!window.confirm('Are you sure you want to delete this machine category?')) return;
+    try {
+      await apiFetch(`/api/categories/${catId}`, {
+        method: 'DELETE'
+      });
+      fetchAdminData();
+    } catch (err) {
+      alert(err.message || 'Failed to delete category');
     }
   };
 
@@ -2424,7 +2473,7 @@ function App() {
                   className={`btn ${adminTab === 'nodes' ? 'btn-cyan' : 'btn-secondary'}`}
                   style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
                 >
-                  <Cpu size={16} /> Hardware Clusters ({machines.length})
+                  <Layers size={16} /> Machine Categories ({categories.length})
                 </button>
 
                 <button 
@@ -2670,76 +2719,125 @@ function App() {
                 </div>
               )}
 
-              {/* TAB 3: HARDWARE NODES CLUSTER */}
+              {/* TAB 3: MACHINE CATEGORIES & TYPE VALUES CONFIGURATOR */}
               {adminTab === 'nodes' && (
                 <div className="animated-fade">
                   <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Cpu size={22} color="var(--accent-cyan)" /> Physical & Virtual Hardware Nodes
+                    <Layers size={22} color="var(--accent-cyan)" /> Machine Categories & Type Values Configurator
                   </h3>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                    {/* Add Machine Form */}
+                  {adminActionError && (
+                    <div style={{ color: 'var(--status-danger)', fontSize: '0.85rem', marginBottom: '1.25rem', padding: '0.75rem', background: 'rgba(255, 77, 77, 0.1)', borderRadius: '8px', border: '1px solid var(--status-danger)' }}>
+                      {adminActionError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
+                    {/* Add Machine Category Form */}
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
-                        Connect New Hardware Node
+                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Plus size={16} color="var(--accent-cyan)" /> Add New Machine Category Value
                       </h4>
 
-                      <form onSubmit={handleCreateMachine}>
-                        {adminActionError && (
-                          <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
-                            {adminActionError}
-                          </div>
-                        )}
-
+                      <form onSubmit={handleCreateCategory}>
                         <div className="form-group">
-                          <label className="form-label">Station Name</label>
+                          <label className="form-label">Category Name</label>
                           <input 
                             type="text" 
                             className="form-input" 
-                            placeholder="e.g. PS5 Physical Host 01"
-                            value={newMachineName}
-                            onChange={(e) => setNewMachineName(e.target.value)}
+                            placeholder="e.g. PlayStation 5 Pro, Nintendo Switch, VR Rig"
+                            value={newCatName}
+                            onChange={(e) => {
+                              setNewCatName(e.target.value);
+                              if (!newCatType) {
+                                setNewCatType(e.target.value.toLowerCase().trim().replace(/\s+/g, '_'));
+                              }
+                            }}
                           />
                         </div>
 
-                        <div className="form-group">
-                          <label className="form-label">Machine Category</label>
-                          <select 
-                            className="form-input" 
-                            value={newMachineType}
-                            style={{ appearance: 'none', WebkitAppearance: 'none' }}
-                            onChange={(e) => setNewMachineType(e.target.value)}
-                          >
-                            {categories.map((cat) => (
-                              <option key={cat.id} value={cat.type}>{cat.name}</option>
-                            ))}
-                          </select>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Type Code / Slug</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="e.g. ps5_pro, switch, vr"
+                              value={newCatType}
+                              onChange={(e) => setNewCatType(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label">Badge Icon</label>
+                            <select 
+                              className="form-input" 
+                              value={newCatIcon}
+                              style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                              onChange={(e) => setNewCatIcon(e.target.value)}
+                            >
+                              <option value="Tv">Tv Console</option>
+                              <option value="Monitor">Monitor / Xbox</option>
+                              <option value="Laptop">Laptop / PC Rig</option>
+                              <option value="Gamepad2">Gamepad / Handheld</option>
+                            </select>
+                          </div>
                         </div>
 
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}>
-                          Link Hardware Node
+                        <div className="form-group">
+                          <label className="form-label">Description / Hardware Spec Summary</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="e.g. Next-Gen 4K 120Hz Ray-Tracing Hardware Nodes"
+                            value={newCatDesc}
+                            onChange={(e) => setNewCatDesc(e.target.value)}
+                          />
+                        </div>
+
+                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}>
+                          <Plus size={16} /> Add Machine Category Value
                         </button>
                       </form>
                     </div>
 
-                    {/* Nodes Listing */}
+                    {/* Existing Machine Categories List */}
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
-                        Connected Cluster Nodes ({machines.length})
+                      <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Configured Machine Categories ({categories.length})</span>
                       </h4>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
-                        {machines.map((m) => {
-                          const catObj = categories.find(c => c.type === m.type);
+                        {categories.map((cat) => {
+                          const catGamesCount = games.filter(g => g.categoryId === cat.type).length;
+                          const catNodesCount = machines.filter(m => m.type === cat.type).length;
+                          const CategoryBadgeIcon = cat.icon === 'Monitor' ? Monitor : cat.icon === 'Laptop' ? Laptop : cat.icon === 'Gamepad2' ? Gamepad2 : Tv;
+
                           return (
-                            <div key={m.id} style={{ padding: '0.75rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div>
-                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.name}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', marginTop: '0.2rem' }}>
-                                  Category: {catObj ? catObj.name : m.type.toUpperCase()}
+                            <div key={cat.id || cat.type} style={{ padding: '0.85rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ flex: 1, paddingRight: '1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                                  <CategoryBadgeIcon size={16} color="var(--accent-cyan)" />
+                                  <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{cat.name}</span>
+                                  <span style={{ fontSize: '0.65rem', background: 'rgba(2, 132, 199, 0.15)', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontFamily: 'var(--font-mono)' }}>
+                                    {cat.type}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                                  {cat.desc || cat.description || 'Streaming Hardware Cluster'}
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', display: 'flex', gap: '1rem' }}>
+                                  <span>🎮 {catGamesCount} Game{catGamesCount !== 1 ? 's' : ''}</span>
+                                  <span>🖥️ {catNodesCount} Station Node{catNodesCount !== 1 ? 's' : ''}</span>
                                 </div>
                               </div>
-                              <button onClick={() => handleDeleteMachine(m.id)} className="btn btn-secondary" style={{ padding: '0.3rem 0.5rem' }}>
+
+                              <button 
+                                onClick={() => handleDeleteCategory(cat.id)} 
+                                className="btn btn-secondary" 
+                                style={{ padding: '0.35rem 0.6rem' }}
+                                title="Delete Machine Category"
+                              >
                                 <Trash2 size={14} color="var(--status-danger)" />
                               </button>
                             </div>
@@ -2748,6 +2846,74 @@ function App() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Hardware Stations Link Console */}
+                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                    <h4 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Cpu size={18} color="var(--accent-cyan)" /> Hardware Station Nodes under Managed Categories ({machines.length})
+                    </h4>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
+                      {/* Add Node form */}
+                      <form onSubmit={handleCreateMachine}>
+                        <div className="form-group">
+                          <label className="form-label">Station Name</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            placeholder="e.g. PS5 Host Node 01"
+                            value={newMachineName}
+                            onChange={(e) => setNewMachineName(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Assigned Category</label>
+                          <select 
+                            className="form-input" 
+                            value={newMachineType}
+                            style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                            onChange={(e) => setNewMachineType(e.target.value)}
+                          >
+                            {categories.map((cat) => (
+                              <option key={cat.id || cat.type} value={cat.type}>{cat.name} ({cat.type})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem' }}>
+                          + Connect Station Node
+                        </button>
+                      </form>
+
+                      {/* Connected Nodes List */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '260px', overflowY: 'auto' }}>
+                        {machines.length === 0 ? (
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic', textAlign: 'center', padding: '1.5rem' }}>
+                            No hardware station nodes linked yet.
+                          </div>
+                        ) : (
+                          machines.map((m) => {
+                            const catObj = categories.find(c => c.type === m.type);
+                            return (
+                              <div key={m.id} style={{ padding: '0.6rem 0.85rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{m.name}</span>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', marginLeft: '0.75rem' }}>
+                                    Category: {catObj ? catObj.name : m.type.toUpperCase()}
+                                  </span>
+                                </div>
+                                <button onClick={() => handleDeleteMachine(m.id)} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem' }}>
+                                  <Trash2 size={12} color="var(--status-danger)" />
+                                </button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
