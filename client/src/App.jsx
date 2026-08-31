@@ -40,7 +40,8 @@ import {
   Globe,
   ArrowRight,
   Menu,
-  X
+  X,
+  Info
 } from 'lucide-react';
 import { uploadGameCoverToSupabase, isSupabaseConfigured } from './supabase.js';
 
@@ -157,6 +158,7 @@ function App() {
   ]);
   const [games, setGames] = useState([]);
   const [selectedLobbyCategory, setSelectedLobbyCategory] = useState(null); // null = Category Selection Cards, 'ps5'|'ps4'|'xbox'|'pc' = Selected Games Catalog
+  const [gameDetailModal, setGameDetailModal] = useState(null); // null or selected game object for blurred popup modal
   const [launchingGameId, setLaunchingGameId] = useState(null);
 
   // Admin Sidebar & Users State
@@ -1568,88 +1570,55 @@ function App() {
                 </p>
               </div>
 
-              {/* Games Grid Display (Direct Overview: Top 4 Games Only) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                {games.slice(0, 4).map((game) => {
-                    const catBadge = game.categoryId === 'ps5' ? 'PS5 PRO' : game.categoryId === 'xbox' ? 'XBOX SERIES X' : 'RTX 4090 PC';
-                    const catColor = game.categoryId === 'ps5' ? 'var(--accent-cyan)' : game.categoryId === 'xbox' ? 'var(--status-success)' : 'var(--accent-cyan)';
+              {/* Games Grid Display (Cover Image & Game Title Only - Click Opens Blurred Detail Modal) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
+                {games.slice(0, 4).map((game) => (
+                  <div 
+                    key={game.id} 
+                    onClick={() => setGameDetailModal(game)}
+                    className="glass-panel cyan-hover" 
+                    style={{ 
+                      borderRadius: '14px', 
+                      overflow: 'hidden', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      cursor: 'pointer',
+                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                      border: '1px solid var(--border-color)'
+                    }}
+                  >
+                    {/* Cover Image Container */}
+                    <div style={{ position: 'relative', height: '230px', overflow: 'hidden', background: '#0b0c10' }}>
+                      <img 
+                        src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
+                        alt={game.title} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      />
+                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95) 0%, transparent 60%)' }} />
 
-                    return (
-                      <div 
-                        key={game.id} 
-                        className="glass-panel" 
-                        style={{ 
-                          borderRadius: '14px', 
-                          overflow: 'hidden', 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          textAlign: 'left',
-                          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                          border: '1px solid var(--border-color)'
-                        }}
-                      >
-                        {/* Cover Image Container */}
-                        <div style={{ position: 'relative', height: '170px', overflow: 'hidden', background: '#000' }}>
-                          <img 
-                            src={game.coverUrl} 
-                            alt={game.title} 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                          />
-
-                          {/* Category Badge Pill */}
-                          <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', border: `1px solid ${catColor}`, padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
-                            <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: catColor, fontWeight: 700 }}>
-                              {catBadge}
-                            </span>
-                          </div>
-
-                          {/* Key Cost Tag */}
-                          <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0, 243, 255, 0.15)', backdropFilter: 'blur(4px)', border: '1px solid var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <Coins size={12} color="var(--accent-cyan)" />
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                              {game.tokenCost} Key{game.tokenCost > 1 ? 's' : ''}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Card Info Content */}
-                        <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.25rem', fontWeight: 600 }}>
-                            {game.genreTag || 'Action RPG'}
-                          </div>
-                          
-                          <h4 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 700 }}>
-                            {game.title}
-                          </h4>
-
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>
-                            {game.description || 'Stream high-definition console gameplay instantly with zero hardware latency.'}
-                          </p>
-
-                          {/* Action Button */}
-                          {token ? (
-                            <button 
-                              onClick={() => handlePlayGame(game)} 
-                              className="btn btn-primary" 
-                              style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', gap: '0.4rem' }}
-                            >
-                              <Play size={14} /> Launch Stream ({game.tokenCost} Key)
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => setCurrentView('register')} 
-                              className="btn btn-cyan" 
-                              style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', gap: '0.4rem' }}
-                            >
-                              <Key size={14} /> Claim Keys & Play
-                            </button>
-                          )}
-                        </div>
+                      {/* Category Badge Pill */}
+                      <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', border: '1px solid var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                          {game.categoryId?.toUpperCase() || 'CONSOLE'}
+                        </span>
                       </div>
-                    );
-                  })}
+
+                      {/* Details Hint Badge */}
+                      <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#fff' }}>
+                        <Info size={12} color="var(--accent-cyan)" /> Details & Play
+                      </div>
+                    </div>
+
+                    {/* Game Title Bar */}
+                    <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {game.title}
+                      </h4>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1966,81 +1935,54 @@ function App() {
                       </button>
                     </div>
                   ) : (
-                    games.filter(g => g.categoryId === selectedLobbyCategory).map((game) => {
-                      const matchingMachines = machines.filter(m => m.type === game.categoryId || (game.categoryId === 'ps4' && m.type === 'ps5'));
-                      const availableCount = matchingMachines.filter(m => m.status === 'available').length;
-                      const isBusy = availableCount === 0;
-
-                      return (
-                        <div 
-                          key={game.id} 
-                          className="glass-panel cyan-hover" 
-                          style={{ 
-                            overflow: 'hidden',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: '14px',
-                            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                          }}
-                        >
-                          {/* Game Cover Image Header */}
-                          <div style={{ height: '160px', width: '100%', position: 'relative', overflow: 'hidden', background: '#12141d' }}>
-                            <img 
-                              src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
-                              alt={game.title}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
-                            />
-                            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95), transparent 70%)' }} />
-                            
-                            {/* Category Badge Pill */}
-                            <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <Tv size={12} color="var(--accent-cyan)" />
-                              <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: '#fff' }}>
-                                {game.categoryId.toUpperCase()}
-                              </span>
-                            </div>
-
-                            {/* Availability Pill */}
-                            <div style={{ position: 'absolute', top: '10px', right: '10px', background: availableCount > 0 ? 'rgba(0, 255, 170, 0.15)' : 'rgba(255, 170, 0, 0.15)', border: availableCount > 0 ? '1px solid var(--status-success)' : '1px solid var(--status-warning)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', color: availableCount > 0 ? 'var(--status-success)' : 'var(--status-warning)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                              {availableCount > 0 ? `${availableCount} Ready` : 'Busy'}
-                            </div>
+                    games.filter(g => g.categoryId === selectedLobbyCategory).map((game) => (
+                      <div 
+                        key={game.id} 
+                        onClick={() => setGameDetailModal(game)}
+                        className="glass-panel cyan-hover" 
+                        style={{ 
+                          borderRadius: '14px',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          cursor: 'pointer',
+                          border: '1px solid var(--border-color)',
+                          transition: 'transform 0.3s ease, box-shadow 0.3s ease'
+                        }}
+                      >
+                        {/* Cover Image Header */}
+                        <div style={{ height: '230px', width: '100%', position: 'relative', overflow: 'hidden', background: '#0b0c10' }}>
+                          <img 
+                            src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
+                            alt={game.title}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease' }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          />
+                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95) 0%, transparent 60%)' }} />
+                          
+                          {/* Category Badge Pill */}
+                          <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <Tv size={12} color="var(--accent-cyan)" />
+                            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: '#fff' }}>
+                              {game.categoryId.toUpperCase()}
+                            </span>
                           </div>
 
-                          {/* Game Info Body */}
-                          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.25rem' }}>
-                              {game.genre || 'Action'}
-                            </div>
-                            <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>{game.title}</h4>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                              {game.description || 'Stream high-definition gameplay on low-latency cloud nodes.'}
-                            </p>
-
-                            {/* Footer: Token Cost & Play Button */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
-                              <div>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Key Cost</span>
-                                <span style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1rem', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                  <Coins size={14} color="var(--accent-cyan)" />
-                                  {game.tokenCost || 1} Token <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>/ {systemSettings.sessionDurationMinutes || 15}m</span>
-                                </span>
-                              </div>
-
-                              <button 
-                                onClick={() => handleLaunchGame(game)}
-                                disabled={launchingGameId === game.id || isBusy}
-                                className={`btn ${availableCount > 0 ? 'btn-cyan' : 'btn-secondary'}`}
-                                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                              >
-                                <Play size={12} fill={availableCount > 0 ? '#0b0c10' : 'none'} />
-                                {launchingGameId === game.id ? 'Connecting...' : (availableCount > 0 ? 'Play Stream' : 'All Busy')}
-                              </button>
-                            </div>
+                          {/* Details hint badge */}
+                          <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#fff' }}>
+                            <Info size={12} color="var(--accent-cyan)" /> Details & Play
                           </div>
                         </div>
-                      );
-                    })
+
+                        {/* Game Title Bar */}
+                        <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {game.title}
+                          </h4>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
@@ -3084,6 +3026,148 @@ function App() {
               >
                 Save Settings
               </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* GAME DETAILS POPUP MODAL WITH BLURRED BACKGROUND */}
+      {gameDetailModal && (
+        <div 
+          className="animated-fade"
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            background: 'rgba(0, 0, 0, 0.75)', 
+            backdropFilter: 'blur(12px)', 
+            WebkitBackdropFilter: 'blur(12px)',
+            zIndex: 2000, 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            padding: '1.5rem' 
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setGameDetailModal(null);
+          }}
+        >
+          <div 
+            className="glass-panel" 
+            style={{ 
+              width: '100%', 
+              maxWidth: '540px', 
+              borderRadius: '18px', 
+              overflow: 'hidden', 
+              position: 'relative',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.6)',
+              border: '1px solid var(--border-color)',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'var(--panel-bg)'
+            }}
+          >
+            {/* Modal Close Button */}
+            <button 
+              onClick={() => setGameDetailModal(null)} 
+              className="btn btn-secondary" 
+              style={{ 
+                position: 'absolute', 
+                top: '1rem', 
+                right: '1rem', 
+                zIndex: 10,
+                width: '36px',
+                height: '36px',
+                padding: 0,
+                borderRadius: '50%',
+                background: 'rgba(0,0,0,0.6)',
+                borderColor: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                outline: 'none'
+              }}
+            >
+              ✕
+            </button>
+
+            {/* Modal Cover Image Header */}
+            <div style={{ position: 'relative', height: '220px', width: '100%', background: '#0b0c10', overflow: 'hidden' }}>
+              <img 
+                src={gameDetailModal.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
+                alt={gameDetailModal.title}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--panel-bg) 0%, transparent 80%)' }} />
+
+              {/* Category Tag & Genre Pills */}
+              <div style={{ position: 'absolute', bottom: '15px', left: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ background: 'rgba(2, 132, 199, 0.2)', backdropFilter: 'blur(6px)', border: '1px solid var(--accent-cyan)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                  {gameDetailModal.categoryId?.toUpperCase() || 'CONSOLE'}
+                </div>
+                <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  {gameDetailModal.genre || gameDetailModal.genreTag || 'Action'}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Details Content Body */}
+            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, textAlign: 'left' }}>
+              <h3 style={{ fontSize: '1.75rem', color: 'var(--text-primary)', marginBottom: '0.75rem', fontWeight: 800 }}>
+                {gameDetailModal.title}
+              </h3>
+
+              <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                {gameDetailModal.description || 'Stream high-definition console gameplay instantly on low-latency WebRTC cloud nodes with zero download storage.'}
+              </p>
+
+              {/* Specs & Hardware Rates Card */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Token Key Rate</span>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <Coins size={16} /> {gameDetailModal.tokenCost || 1} Key / {systemSettings.sessionDurationMinutes || 15}m
+                  </span>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Host Nodes</span>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--status-success)', fontFamily: 'var(--font-mono)' }}>
+                    {machines.filter(m => m.type === gameDetailModal.categoryId || (gameDetailModal.categoryId === 'ps4' && m.type === 'ps5')).filter(m => m.status === 'available').length} Stations Ready
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              {token ? (
+                <button 
+                  onClick={() => {
+                    const targetGame = gameDetailModal;
+                    setGameDetailModal(null);
+                    handleLaunchGame(targetGame);
+                  }}
+                  className="btn btn-cyan"
+                  style={{ width: '100%', padding: '0.85rem', fontSize: '1rem', gap: '0.5rem' }}
+                >
+                  <Play size={18} fill="#0b0c10" /> Launch Game Stream ({gameDetailModal.tokenCost || 1} Key)
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    setGameDetailModal(null);
+                    setCurrentView('register');
+                  }}
+                  className="btn btn-primary"
+                  style={{ width: '100%', padding: '0.85rem', fontSize: '1rem', gap: '0.5rem' }}
+                >
+                  <Key size={18} /> Register / Sign In to Play
+                </button>
+              )}
             </div>
 
           </div>
