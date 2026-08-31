@@ -55,7 +55,7 @@ const ANIMAL_AVATARS = [
   { emoji: '🐼', name: 'Zen Panda', color: '#06b6d4' },
   { emoji: '🐺', name: 'Shadow Wolf', color: '#6366f1' },
   { emoji: '🦅', name: 'Sky Eagle', color: '#3b82f6' },
-  { emoji: '🐉', name: 'Storm Dragon', color: '#8b5cf6' },
+  { emoji: '🐉', name: 'Storm Dragon', color: '#0284c7' },
   { emoji: '🦄', name: 'Mystic Unicorn', color: '#ec4899' }
 ];
 
@@ -678,7 +678,7 @@ function App() {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Render Scrolling Retro Space Grid
-      ctx.strokeStyle = 'rgba(138, 43, 226, 0.15)';
+      ctx.strokeStyle = 'rgba(2, 132, 199, 0.15)';
       ctx.lineWidth = 1;
       bgY = (bgY + 2) % 40;
       for (let y = bgY; y < canvas.height; y += 40) {
@@ -1132,7 +1132,7 @@ function App() {
                     <button 
                       onClick={() => setCurrentView('admin')} 
                       className={`btn ${currentView === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: 'var(--accent-purple)' }}
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: 'var(--accent-cyan)' }}
                     >
                       <Shield size={16} />
                       Admin
@@ -1221,7 +1221,7 @@ function App() {
                         </div>
                         <div>
                           <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>@{user.username}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 600, textTransform: 'uppercase' }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 600, textTransform: 'uppercase' }}>
                             {getAnimalAvatar(user.username).name} • {user.isAdmin ? 'Super Admin' : 'Player Pilot'}
                           </div>
                         </div>
@@ -1234,7 +1234,7 @@ function App() {
                           style={{ width: '100%', justifyContent: 'space-between', padding: '0.6rem 0.85rem', fontSize: '0.8rem' }}
                         >
                           <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            {theme === 'light' ? <Sun size={15} color="#d97706" /> : <Moon size={15} color="var(--accent-purple)" />}
+                            {theme === 'light' ? <Sun size={15} color="#d97706" /> : <Moon size={15} color="var(--accent-cyan)" />}
                             Theme Mode
                           </span>
                           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
@@ -1256,7 +1256,7 @@ function App() {
                           className="btn btn-secondary"
                           style={{ width: '100%', justifyContent: 'flex-start', padding: '0.6rem 0.85rem', fontSize: '0.8rem', gap: '0.5rem' }}
                         >
-                          <Settings size={15} color="var(--accent-purple)" />
+                          <Settings size={15} color="var(--accent-cyan)" />
                           Edit Profile Settings
                         </button>
 
@@ -1390,7 +1390,7 @@ function App() {
                     className="btn btn-secondary"
                     style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
                   >
-                    <Settings size={18} color="var(--accent-purple)" />
+                    <Settings size={18} color="var(--accent-cyan)" />
                     Edit Profile Settings
                   </button>
                 </>
@@ -1403,7 +1403,7 @@ function App() {
                 style={{ width: '100%', justifyContent: 'space-between', padding: '0.65rem 1rem', fontSize: '0.85rem' }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  {theme === 'light' ? <Sun size={18} color="#d97706" /> : <Moon size={18} color="var(--accent-purple)" />}
+                  {theme === 'light' ? <Sun size={18} color="#d97706" /> : <Moon size={18} color="var(--accent-cyan)" />}
                   Theme Mode
                 </span>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
@@ -1463,17 +1463,17 @@ function App() {
               
               {/* Animated Supabase Logo Emblem */}
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                <div style={{ padding: '1rem', background: 'rgba(138, 43, 226, 0.08)', border: '1px solid rgba(138, 43, 226, 0.25)', borderRadius: '50%', boxShadow: '0 0 30px var(--accent-purple-glow)' }}>
+                <div style={{ padding: '1rem', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.25)', borderRadius: '50%', boxShadow: '0 0 30px var(--accent-cyan-glow)' }}>
                   <img 
                     src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
                     alt="VORTEX PLAY Logo Emblem" 
-                    style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 4px 20px var(--accent-purple-glow))' }} 
+                    style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 4px 20px var(--accent-cyan-glow))' }} 
                   />
                 </div>
               </div>
               
               {/* Main Headline */}
-              <h2 className="text-glow-purple" style={{ fontSize: '3.2rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '0.04em', lineHeight: 1.15, color: 'var(--text-primary)' }}>
+              <h2 className="text-glow-cyan" style={{ fontSize: '3.2rem', fontWeight: 900, marginBottom: '1rem', letterSpacing: '0.04em', lineHeight: 1.15, color: 'var(--text-primary)' }}>
                 NEXT-GEN CONSOLE GAMING <br />
                 <span style={{ color: 'var(--accent-cyan)' }}>VIRTUALIZED IN THE CLOUD</span>
               </h2>
@@ -1501,7 +1501,7 @@ function App() {
                   className="btn btn-secondary" 
                   style={{ padding: '1rem 2rem', fontSize: '1.1rem', gap: '0.6rem' }}
                 >
-                  <Flame size={20} color="var(--accent-purple)" />
+                  <Flame size={20} color="var(--accent-cyan)" />
                   Explore Games Catalog
                 </button>
 
@@ -1528,7 +1528,7 @@ function App() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}>
-                  <Tv size={24} color="var(--accent-purple)" />
+                  <Tv size={24} color="var(--accent-cyan)" />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>4K @ 60 FPS</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Hardware Accelerated</div>
@@ -1557,7 +1557,7 @@ function App() {
             {/* DYNAMIC POPULAR GAMES SPOTLIGHT FROM DATABASE (OVERVIEW 4 TITLES ONLY) */}
             <div id="popular-games-section" style={{ marginTop: '5rem', marginBottom: '5rem' }}>
               <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-purple)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
                   <Flame size={18} /> Featured Library Overview
                 </div>
                 <h3 style={{ fontSize: '2.2rem', color: 'var(--text-primary)', fontWeight: 800 }}>
@@ -1572,7 +1572,7 @@ function App() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
                 {games.slice(0, 4).map((game) => {
                     const catBadge = game.categoryId === 'ps5' ? 'PS5 PRO' : game.categoryId === 'xbox' ? 'XBOX SERIES X' : 'RTX 4090 PC';
-                    const catColor = game.categoryId === 'ps5' ? 'var(--accent-cyan)' : game.categoryId === 'xbox' ? 'var(--status-success)' : 'var(--accent-purple)';
+                    const catColor = game.categoryId === 'ps5' ? 'var(--accent-cyan)' : game.categoryId === 'xbox' ? 'var(--status-success)' : 'var(--accent-cyan)';
 
                     return (
                       <div 
@@ -1616,7 +1616,7 @@ function App() {
 
                         {/* Card Info Content */}
                         <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.25rem', fontWeight: 600 }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', marginBottom: '0.25rem', fontWeight: 600 }}>
                             {game.genreTag || 'Action RPG'}
                           </div>
                           
@@ -1674,7 +1674,7 @@ function App() {
                 </div>
 
                 <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
-                  <Tv size={36} color="var(--accent-purple)" style={{ marginBottom: '1rem' }} />
+                  <Tv size={36} color="var(--accent-cyan)" style={{ marginBottom: '1rem' }} />
                   <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>PS5 & Xbox Exclusives</h4>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     Connect to real physical PlayStation 5 and Xbox Series X console nodes directly from your web browser.
@@ -1707,7 +1707,7 @@ function App() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '2rem' }}>
                 <div style={{ padding: '1rem' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-purple)', color: '#fff', fontSize: '1.4rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#fff', fontSize: '1.4rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
                     1
                   </div>
                   <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Create Free Pilot Account</h4>
@@ -1749,7 +1749,7 @@ function App() {
                 <img 
                   src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
                   alt="VORTEX PLAY Logo" 
-                  style={{ width: '56px', height: '56px', objectFit: 'contain', marginBottom: '1rem', filter: 'drop-shadow(0 2px 10px var(--accent-purple-glow))' }} 
+                  style={{ width: '56px', height: '56px', objectFit: 'contain', marginBottom: '1rem', filter: 'drop-shadow(0 2px 10px var(--accent-cyan-glow))' }} 
                 />
                 <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)' }}>
                   {currentView === 'login' ? 'Access Console Array' : 'Register Pilot Core'}
@@ -1849,7 +1849,7 @@ function App() {
                     const matchingMachines = machines.filter(m => m.type === cat.type || (cat.type === 'ps4' && m.type === 'ps5'));
                     const availableMachines = matchingMachines.filter(m => m.status === 'available').length;
                     
-                    const themeColor = cat.type === 'ps5' ? 'var(--accent-cyan)' : cat.type === 'ps4' ? 'var(--accent-purple)' : cat.type === 'xbox' ? '#107C10' : 'var(--accent-cyan)';
+                    const themeColor = cat.type === 'ps5' ? 'var(--accent-cyan)' : cat.type === 'ps4' ? 'var(--accent-cyan)' : cat.type === 'xbox' ? '#107C10' : 'var(--accent-cyan)';
                     const CategoryIcon = cat.type === 'xbox' ? Monitor : cat.type === 'pc' ? Laptop : Tv;
 
                     return (
@@ -1932,7 +1932,7 @@ function App() {
                     </button>
                     <div>
                       <h3 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                        {selectedLobbyCategory === 'ps5' ? <Tv size={26} color="var(--accent-cyan)" /> : selectedLobbyCategory === 'ps4' ? <Tv size={26} color="var(--accent-purple)" /> : selectedLobbyCategory === 'xbox' ? <Monitor size={26} color="#107C10" /> : <Laptop size={26} color="var(--accent-cyan)" />}
+                        {selectedLobbyCategory === 'ps5' ? <Tv size={26} color="var(--accent-cyan)" /> : selectedLobbyCategory === 'ps4' ? <Tv size={26} color="var(--accent-cyan)" /> : selectedLobbyCategory === 'xbox' ? <Monitor size={26} color="#107C10" /> : <Laptop size={26} color="var(--accent-cyan)" />}
                         {categories.find(c => c.type === selectedLobbyCategory)?.name || selectedLobbyCategory.toUpperCase()} Games
                       </h3>
                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
@@ -2153,15 +2153,15 @@ function App() {
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>ACTION KEYBOARD CAPTURES</div>
                       <div style={{ display: 'flex', gap: '1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: activeKeys['Btn_A'] ? 'var(--accent-purple)' : 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700 }}>A</div>
+                          <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: activeKeys['Btn_A'] ? 'var(--accent-cyan)' : 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700 }}>A</div>
                           <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>SPACE / J</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: activeKeys['Btn_B'] ? 'var(--accent-purple)' : 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700 }}>B</div>
+                          <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: activeKeys['Btn_B'] ? 'var(--accent-cyan)' : 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700 }}>B</div>
                           <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>K key</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: activeKeys['Btn_X'] ? 'var(--accent-purple)' : 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700 }}>X</div>
+                          <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: activeKeys['Btn_X'] ? 'var(--accent-cyan)' : 'var(--bg-tertiary)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700 }}>X</div>
                           <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>L key</span>
                         </div>
                       </div>
@@ -2225,13 +2225,13 @@ function App() {
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center',
-                        border: pkg.recommended ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                        boxShadow: pkg.recommended ? '0 0 15px var(--accent-purple-glow)' : ''
+                        border: pkg.recommended ? '1px solid var(--accent-cyan)' : '1px solid var(--border-color)',
+                        boxShadow: pkg.recommended ? '0 0 15px var(--accent-cyan-glow)' : ''
                       }}
                     >
                       <div>
                         {pkg.recommended && (
-                          <span style={{ background: 'var(--accent-purple)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '0.5rem' }}>
+                          <span style={{ background: 'var(--accent-cyan)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '0.5rem' }}>
                             Best Value
                           </span>
                         )}
@@ -2534,9 +2534,9 @@ function App() {
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Keys Transacted</span>
                       <h4 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', margin: '0.2rem 0' }}>{adminStats.totalTokensSold}</h4>
                     </div>
-                    <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid var(--accent-purple)' }}>
+                    <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid var(--accent-cyan)' }}>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estimated Revenue</span>
-                      <h4 style={{ fontSize: '1.8rem', color: 'var(--accent-purple)', margin: '0.2rem 0' }}>${adminStats.totalRevenue.toFixed(2)}</h4>
+                      <h4 style={{ fontSize: '1.8rem', color: 'var(--accent-cyan)', margin: '0.2rem 0' }}>${adminStats.totalRevenue.toFixed(2)}</h4>
                     </div>
                   </div>
 
@@ -2852,7 +2852,7 @@ function App() {
               {adminTab === 'pricing' && (
                 <div className="animated-fade">
                   <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Coins size={22} color="var(--accent-purple)" /> Pricing & Per-Token Session Configurator
+                    <Coins size={22} color="var(--accent-cyan)" /> Pricing & Per-Token Session Configurator
                   </h3>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
@@ -2940,7 +2940,7 @@ function App() {
                         </div>
                       ) : (
                         adminSessions.map((sess) => (
-                          <div key={sess.id} className="glass-panel" style={{ padding: '1rem', borderLeft: '3px solid var(--accent-purple)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div key={sess.id} className="glass-panel" style={{ padding: '1rem', borderLeft: '3px solid var(--accent-cyan)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                               <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '1rem' }}>@{sess.username}</div>
                               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '0.2rem' }}>
@@ -2975,7 +2975,7 @@ function App() {
                         <div key={usr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                           <div>
                             <div style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              @{usr.username} {usr.isAdmin && <span style={{ background: 'var(--accent-purple)', fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', color: '#fff' }}>ADMIN</span>}
+                              @{usr.username} {usr.isAdmin && <span style={{ background: 'var(--accent-cyan)', fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', color: '#fff' }}>ADMIN</span>}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                               ID: {usr.id} | Joined: {new Date(usr.createdAt).toLocaleDateString()}
@@ -3026,7 +3026,7 @@ function App() {
               </div>
               <div>
                 <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', margin: 0 }}>@{user.username}</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--accent-purple)', fontWeight: 600, margin: 0 }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 600, margin: 0 }}>
                   {getAnimalAvatar(user.username).name} Avatar Active
                 </p>
               </div>
