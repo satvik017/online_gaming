@@ -252,6 +252,26 @@ app.post('/api/categories', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
+app.put('/api/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const updated = await dbOps.updateCategory(req.params.id, req.body);
+    io.emit('categories_update', await dbOps.getCategories());
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await dbOps.deleteCategory(req.params.id);
+    io.emit('categories_update', await dbOps.getCategories());
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/games', async (req, res) => {
   try {
     const games = await dbOps.getGames();
@@ -313,9 +333,13 @@ app.post('/api/games/:id/play', authenticateToken, async (req, res) => {
     const game = await dbOps.getGameById(gameId);
     if (!game) return res.status(404).json({ error: 'Game not found in catalog' });
 
-    // Find available machine matching game category
+    // Find available machine matching game category (PS4 games can run on PS4 or PS5 hardware nodes)
     const machines = await dbOps.getMachines();
-    const availableMachine = machines.find(m => m.status === 'available' && (m.type === game.categoryId || m.type.includes(game.categoryId)));
+    const availableMachine = machines.find(m => m.status === 'available' && (
+      m.type === game.categoryId || 
+      m.type.includes(game.categoryId) ||
+      (game.categoryId === 'ps4' && (m.type === 'ps5' || m.type === 'ps4'))
+    ));
 
     if (!availableMachine) {
       return res.status(400).json({ error: `All ${game.categoryId.toUpperCase()} gaming stations are currently occupied. Please wait a moment.` });

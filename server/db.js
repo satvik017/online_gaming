@@ -73,7 +73,8 @@ const PackageSchema = new mongoose.Schema({
   tokens: { type: Number, required: true },
   price: { type: Number, required: true },
   desc: { type: String, default: '' },
-  recommended: { type: Boolean, default: false }
+  recommended: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
 const SettingsSchema = new mongoose.Schema({
@@ -86,7 +87,8 @@ const CategorySchema = new mongoose.Schema({
   name: { type: String, required: true }, // PlayStation 5, Xbox Series X, Gaming PC
   type: { type: String, required: true, unique: true }, // ps5, xbox, pc
   icon: { type: String, default: 'Tv' },
-  description: { type: String, default: '' }
+  description: { type: String, default: '' },
+  isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
 const GameSchema = new mongoose.Schema({
@@ -96,7 +98,8 @@ const GameSchema = new mongoose.Schema({
   tokenCost: { type: Number, default: 1 },
   genre: { type: String, default: 'Action / Adventure' },
   coverUrl: { type: String, default: '' },
-  description: { type: String, default: '' }
+  description: { type: String, default: '' },
+  isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
 export const User = mongoose.model('User', UserSchema);
@@ -245,6 +248,7 @@ const seedDb = async () => {
     if (categoryCount === 0) {
       await Category.create([
         { id: 'cat_ps5', name: 'PlayStation 5', type: 'ps5', icon: 'Tv', description: 'Next-gen Sony 4K console gaming cluster' },
+        { id: 'cat_ps4', name: 'PlayStation 4', type: 'ps4', icon: 'Tv', description: 'Classic PS4 Pro hits & exclusive remastered titles' },
         { id: 'cat_xbox', name: 'Xbox Series X', type: 'xbox', icon: 'Monitor', description: 'High-performance Microsoft Xbox gaming node array' },
         { id: 'cat_pc', name: 'Liquid PC Rig', type: 'pc', icon: 'Laptop', description: 'Ultra-settings RTX 4090 Ray-Tracing cloud PC rigs' }
       ]);
@@ -271,6 +275,15 @@ const seedDb = async () => {
           genre: 'Action / Superhero',
           coverUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80',
           description: 'Swing through New York as Peter Parker and Miles Morales with near-instant loading.'
+        },
+        {
+          id: 'game_gow_ps4',
+          title: 'God of War Ragnarök (PS4)',
+          categoryId: 'ps4',
+          tokenCost: 1,
+          genre: 'Action Adventure',
+          coverUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=600&auto=format&fit=crop&q=80',
+          description: 'Embark on an epic Norse mythological journey with Kratos and Atreus.'
         },
         {
           id: 'game_gt7',
@@ -321,7 +334,8 @@ export const dbOps = {
       name: catData.name,
       type: catData.type || 'ps5',
       icon: catData.icon || 'Tv',
-      description: catData.description || ''
+      description: catData.description || '',
+      isActive: catData.isActive !== undefined ? catData.isActive : true
     });
     return newCat.toObject();
   },
@@ -359,7 +373,8 @@ export const dbOps = {
       tokenCost: parseInt(gameData.tokenCost) || 1,
       genre: gameData.genre || 'Action / Adventure',
       coverUrl: gameData.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
-      description: gameData.description || ''
+      description: gameData.description || '',
+      isActive: gameData.isActive !== undefined ? gameData.isActive : true
     });
     return newGame.toObject();
   },
@@ -393,7 +408,8 @@ export const dbOps = {
       tokens: parseInt(pkgData.tokens) || 5,
       price: parseFloat(pkgData.price) || 5.00,
       desc: pkgData.desc || '',
-      recommended: Boolean(pkgData.recommended)
+      recommended: Boolean(pkgData.recommended),
+      isActive: pkgData.isActive !== undefined ? pkgData.isActive : true
     });
     return newPkg.toObject();
   },
