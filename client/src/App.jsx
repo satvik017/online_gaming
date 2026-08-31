@@ -969,15 +969,15 @@ function App() {
         method: 'POST',
         body: JSON.stringify({
           name: newMachineName,
-          type: newMachineType,
-          ipAddress: newMachineIp,
-          activeGame: newMachineGame,
-          tokenCostPerSession: newMachineCost,
-          cpuSpec: newMachineCpu,
-          gpuSpec: newMachineGpu,
-          ramSpec: newMachineRam,
-          resolutionSpec: newMachineResolution,
-          regionTag: newMachineRegion
+          type: newMachineType || (categories[0]?.type || 'ps5'),
+          ipAddress: newMachineIp || '127.0.0.1',
+          activeGame: newMachineGame || 'Featured Cloud Title',
+          tokenCostPerSession: newMachineCost || 1,
+          cpuSpec: newMachineCpu || 'Custom AMD Zen 2 8-Core',
+          gpuSpec: newMachineGpu || 'RDNA 2 Engine (10.28 TFLOPS)',
+          ramSpec: newMachineRam || '16GB GDDR6 Unified',
+          resolutionSpec: newMachineResolution || '4K @ 60 FPS',
+          regionTag: newMachineRegion || 'Cloud Station'
         })
       });
 
@@ -2547,10 +2547,9 @@ function App() {
                               style={{ appearance: 'none', WebkitAppearance: 'none' }}
                               onChange={(e) => setNewGameCategory(e.target.value)}
                             >
-                              <option value="ps5">PlayStation 5</option>
-                              <option value="ps4">PlayStation 4</option>
-                              <option value="xbox">Xbox Series X</option>
-                              <option value="pc">Liquid Gaming PC</option>
+                              {categories.map((cat) => (
+                                <option key={cat.id} value={cat.type}>{cat.name}</option>
+                              ))}
                             </select>
                           </div>
                           <div className="form-group">
@@ -2703,62 +2702,21 @@ function App() {
                           />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                          <div className="form-group">
-                            <label className="form-label">Device Type</label>
-                            <select 
-                              className="form-input" 
-                              value={newMachineType}
-                              style={{ appearance: 'none', WebkitAppearance: 'none' }}
-                              onChange={(e) => setNewMachineType(e.target.value)}
-                            >
-                              <option value="ps5">PlayStation 5</option>
-                              <option value="xbox">Xbox Series X</option>
-                              <option value="pc">Gaming PC</option>
-                            </select>
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Virtual IP / Address</label>
-                            <input 
-                              type="text" 
-                              className="form-input" 
-                              placeholder="192.168.1.100"
-                              value={newMachineIp}
-                              onChange={(e) => setNewMachineIp(e.target.value)}
-                            />
-                          </div>
+                        <div className="form-group">
+                          <label className="form-label">Machine Category</label>
+                          <select 
+                            className="form-input" 
+                            value={newMachineType}
+                            style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                            onChange={(e) => setNewMachineType(e.target.value)}
+                          >
+                            {categories.map((cat) => (
+                              <option key={cat.id} value={cat.type}>{cat.name}</option>
+                            ))}
+                          </select>
                         </div>
 
-                        {/* Specs Configuration */}
-                        <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
-                          <div className="form-group">
-                            <label className="form-label">Server Region / Location</label>
-                            <select 
-                              className="form-input" 
-                              value={newMachineRegion}
-                              style={{ appearance: 'none', WebkitAppearance: 'none' }}
-                              onChange={(e) => setNewMachineRegion(e.target.value)}
-                            >
-                              <option value="Tokyo - Asia East">Tokyo - Asia East</option>
-                              <option value="Seattle - US West">Seattle - US West</option>
-                              <option value="Frankfurt - EU Central">Frankfurt - EU Central</option>
-                              <option value="London - EU West">London - EU West</option>
-                            </select>
-                          </div>
-
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div className="form-group">
-                              <label className="form-label">CPU Spec</label>
-                              <input type="text" className="form-input" value={newMachineCpu} onChange={(e) => setNewMachineCpu(e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                              <label className="form-label">GPU Spec</label>
-                              <input type="text" className="form-input" value={newMachineGpu} onChange={(e) => setNewMachineGpu(e.target.value)} />
-                            </div>
-                          </div>
-                        </div>
-
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}>
                           Link Hardware Node
                         </button>
                       </form>
@@ -2771,19 +2729,22 @@ function App() {
                       </h4>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
-                        {machines.map((m) => (
-                          <div key={m.id} style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.name}</div>
+                        {machines.map((m) => {
+                          const catObj = categories.find(c => c.type === m.type);
+                          return (
+                            <div key={m.id} style={{ padding: '0.75rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', marginTop: '0.2rem' }}>
+                                  Category: {catObj ? catObj.name : m.type.toUpperCase()}
+                                </div>
+                              </div>
                               <button onClick={() => handleDeleteMachine(m.id)} className="btn btn-secondary" style={{ padding: '0.3rem 0.5rem' }}>
                                 <Trash2 size={14} color="var(--status-danger)" />
                               </button>
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: '0.25rem' }}>
-                              Type: {m.type.toUpperCase()} | IP: {m.ipAddress} | Region: {m.regionTag}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
