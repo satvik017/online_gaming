@@ -165,6 +165,12 @@ function App() {
   const [adminTab, setAdminTab] = useState('overview'); // overview, games, nodes, pricing, sessions, players
   const [adminUsersList, setAdminUsersList] = useState([]);
 
+  // Admin selected items for CRUD operations
+  const [selectedGameId, setSelectedGameId] = useState(null);
+  const [selectedCatId, setSelectedCatId] = useState(null);
+  const [selectedMachineId, setSelectedMachineId] = useState(null);
+  const [selectedPkgId, setSelectedPkgId] = useState(null);
+
   // Admin Add Game Form State
   const [newGameTitle, setNewGameTitle] = useState('');
   const [newGameCategory, setNewGameCategory] = useState('ps5');
@@ -873,7 +879,29 @@ function App() {
 
   // --- GAMES CATALOG ACTIONS & LAUNCH ---
 
-  const handleCreateGame = async (e) => {
+  const handleSelectGame = (game) => {
+    setSelectedGameId(game.id);
+    setNewGameTitle(game.title);
+    setNewGameCategory(game.categoryId);
+    setNewGameCost(game.tokenCost);
+    setNewGameGenre(game.genre);
+    setNewGameCover(game.coverUrl);
+    setNewGameDesc(game.description);
+    setGameActionError('');
+  };
+
+  const handleClearGame = () => {
+    setSelectedGameId(null);
+    setNewGameTitle('');
+    setNewGameCategory('ps5');
+    setNewGameCost(1);
+    setNewGameGenre('Action / Adventure');
+    setNewGameCover('');
+    setNewGameDesc('');
+    setGameActionError('');
+  };
+
+  const handleSaveGame = async (e) => {
     e.preventDefault();
     setGameActionError('');
     if (!newGameTitle) {
@@ -882,26 +910,48 @@ function App() {
     }
 
     try {
-      await apiFetch('/api/games', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: newGameTitle,
-          categoryId: newGameCategory,
-          tokenCost: parseInt(newGameCost) || 1,
-          genre: newGameGenre,
-          coverUrl: newGameCover || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
-          description: newGameDesc
-        })
-      });
+      const payload = {
+        title: newGameTitle,
+        categoryId: newGameCategory,
+        tokenCost: parseInt(newGameCost) || 1,
+        genre: newGameGenre,
+        coverUrl: newGameCover || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
+        description: newGameDesc
+      };
 
-      setNewGameTitle('');
-      setNewGameGenre('Action / Adventure');
-      setNewGameCover('');
-      setNewGameDesc('');
+      if (selectedGameId) {
+        await apiFetch(`/api/games/${selectedGameId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        alert(`Game '${newGameTitle}' updated successfully.`);
+      } else {
+        await apiFetch('/api/games', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        alert(`Game '${newGameTitle}' added to ${newGameCategory.toUpperCase()} catalog.`);
+      }
+
+      handleClearGame();
       fetchGames();
-      alert(`Game '${newGameTitle}' added to ${newGameCategory.toUpperCase()} catalog.`);
     } catch (err) {
       setGameActionError(err.message);
+    }
+  };
+
+  const handleToggleGameStatus = async (game) => {
+    try {
+      await apiFetch(`/api/games/${game.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ isActive: !game.isActive })
+      });
+      fetchGames();
+      if (selectedGameId === game.id) {
+        handleClearGame();
+      }
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -909,6 +959,7 @@ function App() {
     if (window.confirm('Delete this game from the catalog?')) {
       try {
         await apiFetch(`/api/games/${id}`, { method: 'DELETE' });
+        if (selectedGameId === id) handleClearGame();
         fetchGames();
       } catch (err) {
         alert(err.message);
@@ -962,7 +1013,37 @@ function App() {
   };
 
   // --- ADMIN PORTAL ACTIONS ---
-  const handleCreateMachine = async (e) => {
+  const handleSelectMachine = (machine) => {
+    setSelectedMachineId(machine.id);
+    setNewMachineName(machine.name);
+    setNewMachineType(machine.type);
+    setNewMachineIp(machine.ipAddress);
+    setNewMachineGame(machine.activeGame);
+    setNewMachineCost(machine.tokenCostPerSession);
+    setNewMachineCpu(machine.cpuSpec);
+    setNewMachineGpu(machine.gpuSpec);
+    setNewMachineRam(machine.ramSpec);
+    setNewMachineResolution(machine.resolutionSpec);
+    setNewMachineRegion(machine.regionTag);
+    setAdminActionError('');
+  };
+
+  const handleClearMachine = () => {
+    setSelectedMachineId(null);
+    setNewMachineName('');
+    setNewMachineType('ps5');
+    setNewMachineIp('192.168.1.100');
+    setNewMachineGame('Elden Ring');
+    setNewMachineCost(1);
+    setNewMachineCpu('Custom AMD Zen 2 8-Core');
+    setNewMachineGpu('RDNA 2 Engine (10.28 TFLOPS)');
+    setNewMachineRam('16GB GDDR6 Unified');
+    setNewMachineResolution('4K @ 60 FPS');
+    setNewMachineRegion('Tokyo - Asia East');
+    setAdminActionError('');
+  };
+
+  const handleSaveMachine = async (e) => {
     e.preventDefault();
     setAdminActionError('');
     if (!newMachineName) {
@@ -971,32 +1052,76 @@ function App() {
     }
 
     try {
-      await apiFetch('/api/machines', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: newMachineName,
-          type: newMachineType || (categories[0]?.type || 'ps5'),
-          ipAddress: newMachineIp || '127.0.0.1',
-          activeGame: newMachineGame || 'Featured Cloud Title',
-          tokenCostPerSession: newMachineCost || 1,
-          cpuSpec: newMachineCpu || 'Custom AMD Zen 2 8-Core',
-          gpuSpec: newMachineGpu || 'RDNA 2 Engine (10.28 TFLOPS)',
-          ramSpec: newMachineRam || '16GB GDDR6 Unified',
-          resolutionSpec: newMachineResolution || '4K @ 60 FPS',
-          regionTag: newMachineRegion || 'Cloud Station'
-        })
-      });
+      const payload = {
+        name: newMachineName,
+        type: newMachineType || (categories[0]?.type || 'ps5'),
+        ipAddress: newMachineIp || '127.0.0.1',
+        activeGame: newMachineGame || 'Featured Cloud Title',
+        tokenCostPerSession: parseInt(newMachineCost) || 1,
+        cpuSpec: newMachineCpu || 'Custom AMD Zen 2 8-Core',
+        gpuSpec: newMachineGpu || 'RDNA 2 Engine (10.28 TFLOPS)',
+        ramSpec: newMachineRam || '16GB GDDR6 Unified',
+        resolutionSpec: newMachineResolution || '4K @ 60 FPS',
+        regionTag: newMachineRegion || 'Cloud Station'
+      };
 
-      setNewMachineName('');
-      setNewMachineGame('');
+      if (selectedMachineId) {
+        await apiFetch(`/api/machines/${selectedMachineId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        alert('Node updated successfully.');
+      } else {
+        await apiFetch('/api/machines', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        alert('Node added and linked to virtual cluster.');
+      }
+
+      handleClearMachine();
       fetchAdminData();
-      alert('Node added and linked to virtual cluster with hardware specs.');
     } catch (err) {
       setAdminActionError(err.message);
     }
   };
 
-  const handleCreateCategory = async (e) => {
+  const handleToggleMachineStatus = async (machine) => {
+    try {
+      // Toggle between available and offline. If in-use, don't allow toggling, or force it to offline.
+      const newStatus = machine.status === 'offline' ? 'available' : 'offline';
+      await apiFetch(`/api/machines/${machine.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus })
+      });
+      fetchAdminData();
+      if (selectedMachineId === machine.id) {
+        handleClearMachine();
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleSelectCategory = (cat) => {
+    setSelectedCatId(cat.id);
+    setNewCatName(cat.name);
+    setNewCatType(cat.type);
+    setNewCatDesc(cat.description);
+    setNewCatIcon(cat.icon);
+    setAdminActionError('');
+  };
+
+  const handleClearCategory = () => {
+    setSelectedCatId(null);
+    setNewCatName('');
+    setNewCatType('');
+    setNewCatDesc('');
+    setNewCatIcon('Tv');
+    setAdminActionError('');
+  };
+
+  const handleSaveCategory = async (e) => {
     e.preventDefault();
     setAdminActionError('');
     if (!newCatName || !newCatType) {
@@ -1007,23 +1132,46 @@ function App() {
     const typeSlug = newCatType.toLowerCase().trim().replace(/\s+/g, '_');
 
     try {
-      await apiFetch('/api/categories', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: newCatName,
-          type: typeSlug,
-          icon: newCatIcon,
-          description: newCatDesc || `${newCatName} hardware streaming category`
-        })
-      });
+      const payload = {
+        name: newCatName,
+        type: typeSlug,
+        icon: newCatIcon,
+        description: newCatDesc || `${newCatName} hardware streaming category`
+      };
 
-      setNewCatName('');
-      setNewCatType('');
-      setNewCatDesc('');
+      if (selectedCatId) {
+        await apiFetch(`/api/categories/${selectedCatId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        alert(`Machine Category "${newCatName}" updated successfully!`);
+      } else {
+        await apiFetch('/api/categories', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        alert(`Machine Category "${newCatName}" added successfully!`);
+      }
+
+      handleClearCategory();
       fetchAdminData();
-      alert(`Machine Category "${newCatName}" (${typeSlug}) added successfully!`);
     } catch (err) {
       setAdminActionError(err.message);
+    }
+  };
+
+  const handleToggleCategoryStatus = async (cat) => {
+    try {
+      await apiFetch(`/api/categories/${cat.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ isActive: !cat.isActive })
+      });
+      fetchAdminData();
+      if (selectedCatId === cat.id) {
+        handleClearCategory();
+      }
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -1033,13 +1181,34 @@ function App() {
       await apiFetch(`/api/categories/${catId}`, {
         method: 'DELETE'
       });
+      if (selectedCatId === catId) handleClearCategory();
       fetchAdminData();
     } catch (err) {
       alert(err.message || 'Failed to delete category');
     }
   };
 
-  const handleCreatePackage = async (e) => {
+  const handleSelectPackage = (pkg) => {
+    setSelectedPkgId(pkg.id);
+    setNewPkgTitle(pkg.title);
+    setNewPkgDesc(pkg.desc);
+    setNewPkgTokens(pkg.tokens);
+    setNewPkgPrice(pkg.price);
+    setNewPkgRecommended(pkg.recommended);
+    setPackageActionError('');
+  };
+
+  const handleClearPackage = () => {
+    setSelectedPkgId(null);
+    setNewPkgTitle('');
+    setNewPkgDesc('');
+    setNewPkgTokens(10);
+    setNewPkgPrice(10.00);
+    setNewPkgRecommended(false);
+    setPackageActionError('');
+  };
+
+  const handleSavePackage = async (e) => {
     e.preventDefault();
     setPackageActionError('');
     if (!newPkgTitle || !newPkgTokens || !newPkgPrice) {
@@ -1048,26 +1217,47 @@ function App() {
     }
 
     try {
-      await apiFetch('/api/packages', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: newPkgTitle,
-          tokens: parseInt(newPkgTokens),
-          price: parseFloat(newPkgPrice),
-          desc: newPkgDesc,
-          recommended: newPkgRecommended
-        })
-      });
+      const payload = {
+        title: newPkgTitle,
+        tokens: parseInt(newPkgTokens),
+        price: parseFloat(newPkgPrice),
+        desc: newPkgDesc,
+        recommended: newPkgRecommended
+      };
 
-      setNewPkgTitle('');
-      setNewPkgDesc('');
-      setNewPkgTokens(10);
-      setNewPkgPrice(10.00);
-      setNewPkgRecommended(false);
+      if (selectedPkgId) {
+        await apiFetch(`/api/packages/${selectedPkgId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        alert('Token package updated successfully.');
+      } else {
+        await apiFetch('/api/packages', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        alert('Token package added to Key Shop.');
+      }
+
+      handleClearPackage();
       fetchPackages();
-      alert('Token package added to Key Shop.');
     } catch (err) {
       setPackageActionError(err.message);
+    }
+  };
+
+  const handleTogglePackageStatus = async (pkg) => {
+    try {
+      await apiFetch(`/api/packages/${pkg.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ isActive: !pkg.isActive })
+      });
+      fetchPackages();
+      if (selectedPkgId === pkg.id) {
+        handleClearPackage();
+      }
+    } catch (err) {
+      alert(err.message);
     }
   };
 
@@ -1077,6 +1267,7 @@ function App() {
         await apiFetch(`/api/packages/${id}`, {
           method: 'DELETE'
         });
+        if (selectedPkgId === id) handleClearPackage();
         fetchPackages();
       } catch (err) {
         alert(err.message);
@@ -1138,6 +1329,12 @@ function App() {
     const rem = secs % 60;
     return `${mins.toString().padStart(2, '0')}:${rem.toString().padStart(2, '0')}`;
   };
+
+  // Derived state for non-admin user views
+  const activeCategories = categories.filter(c => c.isActive !== false);
+  const activeCategoryTypes = activeCategories.map(c => c.type);
+  const activeGames = games.filter(g => g.isActive !== false && activeCategoryTypes.includes(g.categoryId));
+  const activeMachines = machines.filter(m => m.status !== 'offline' && activeCategoryTypes.includes(m.type));
 
   return (
     <div className="app-container">
@@ -1621,7 +1818,7 @@ function App() {
 
               {/* Games Grid Display (Cover Image & Game Title Only - Click Opens Blurred Detail Modal) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
-                {games.slice(0, 4).map((game) => (
+                {activeGames.slice(0, 4).map((game) => (
                   <div 
                     key={game.id} 
                     onClick={() => setGameDetailModal(game)}
@@ -1854,7 +2051,7 @@ function App() {
                     <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '0.6rem 1.2rem', borderRadius: '10px', textAlign: 'right' }}>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Active Stations</div>
                       <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-success)', fontFamily: 'var(--font-mono)' }}>
-                        {machines.filter(m => m.status === 'available').length} / {machines.length} Ready
+                        {activeMachines.filter(m => m.status === 'available').length} / {activeMachines.length} Ready
                       </div>
                     </div>
                   </div>
@@ -1862,9 +2059,9 @@ function App() {
 
                 {/* Category Cards Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '1.75rem', marginBottom: '3rem' }}>
-                  {categories.map((cat) => {
-                    const catGames = games.filter(g => g.categoryId === cat.type);
-                    const matchingMachines = machines.filter(m => m.type === cat.type || (cat.type === 'ps4' && m.type === 'ps5'));
+                  {activeCategories.map((cat) => {
+                    const catGames = activeGames.filter(g => g.categoryId === cat.type);
+                    const matchingMachines = activeMachines.filter(m => m.type === cat.type || (cat.type === 'ps4' && m.type === 'ps5'));
                     const availableMachines = matchingMachines.filter(m => m.status === 'available').length;
                     
                     const themeColor = cat.type === 'ps5' ? 'var(--accent-cyan)' : cat.type === 'ps4' ? 'var(--accent-cyan)' : cat.type === 'xbox' ? '#107C10' : 'var(--accent-cyan)';
@@ -1961,7 +2158,7 @@ function App() {
 
                   {/* Category Switcher Pills */}
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {categories.map((c) => (
+                    {activeCategories.map((c) => (
                       <button
                         key={c.id}
                         onClick={() => setSelectedLobbyCategory(c.type)}
@@ -1976,15 +2173,15 @@ function App() {
 
                 {/* Games Grid for Selected Category */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1.5rem' }}>
-                  {games.filter(g => g.categoryId === selectedLobbyCategory).length === 0 ? (
+                  {activeGames.filter(g => g.categoryId === selectedLobbyCategory).length === 0 ? (
                     <div className="glass-panel" style={{ padding: '3rem', gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>No games published under {categories.find(c => c.type === selectedLobbyCategory)?.name} yet.</p>
+                      <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>No games published under {activeCategories.find(c => c.type === selectedLobbyCategory)?.name} yet.</p>
                       <button onClick={() => setSelectedLobbyCategory(null)} className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}>
                         Select Another Category
                       </button>
                     </div>
                   ) : (
-                    games.filter(g => g.categoryId === selectedLobbyCategory).map((game) => (
+                    activeGames.filter(g => g.categoryId === selectedLobbyCategory).map((game) => (
                       <div 
                         key={game.id} 
                         onClick={() => setGameDetailModal(game)}
@@ -2477,6 +2674,14 @@ function App() {
                 </button>
 
                 <button 
+                  onClick={() => setAdminTab('stations')}
+                  className={`btn ${adminTab === 'stations' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                >
+                  <Cpu size={16} /> Hardware Stations ({machines.length})
+                </button>
+
+                <button 
                   onClick={() => setAdminTab('pricing')}
                   className={`btn ${adminTab === 'pricing' ? 'btn-cyan' : 'btn-secondary'}`}
                   style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
@@ -2569,7 +2774,7 @@ function App() {
                         Add New Game to Catalog
                       </h4>
 
-                      <form onSubmit={handleCreateGame}>
+                      <form onSubmit={handleSaveGame}>
                         {gameActionError && (
                           <div style={{ color: 'var(--status-danger)', fontSize: '0.8rem', marginBottom: '1rem' }}>
                             {gameActionError}
@@ -2684,9 +2889,20 @@ function App() {
                           />
                         </div>
 
-                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
-                          Publish Game to Catalog
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                          {selectedGameId ? (
+                            <>
+                              <button type="button" onClick={handleClearGame} className="btn btn-secondary" style={{ flex: 1 }}>Insert New</button>
+                              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Update</button>
+                              <button type="button" onClick={() => handleToggleGameStatus(games.find(g => g.id === selectedGameId))} className="btn btn-secondary" style={{ flex: 1 }}>{games.find(g => g.id === selectedGameId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
+                              <button type="button" onClick={() => handleDeleteGame(selectedGameId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                            </>
+                          ) : (
+                            <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
+                              Publish Game to Catalog
+                            </button>
+                          )}
+                        </div>
                       </form>
                     </div>
 
@@ -2698,7 +2914,9 @@ function App() {
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '420px', overflowY: 'auto' }}>
                         {games.map((g) => (
-                          <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                          <div key={g.id} 
+                               onClick={() => handleSelectGame(g)}
+                               style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: selectedGameId === g.id ? 'rgba(0, 240, 255, 0.1)' : 'var(--bg-tertiary)', borderRadius: '6px', border: selectedGameId === g.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-color)', opacity: g.isActive === false ? 0.6 : 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <img src={g.coverUrl} alt={g.title} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
                               <div>
@@ -2739,7 +2957,7 @@ function App() {
                         <Plus size={16} color="var(--accent-cyan)" /> Add New Machine Category Value
                       </h4>
 
-                      <form onSubmit={handleCreateCategory}>
+                      <form onSubmit={handleSaveCategory}>
                         <div className="form-group">
                           <label className="form-label">Category Name</label>
                           <input 
@@ -2795,9 +3013,20 @@ function App() {
                           />
                         </div>
 
-                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}>
-                          <Plus size={16} /> Add Machine Category Value
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                          {selectedCatId ? (
+                            <>
+                              <button type="button" onClick={handleClearCategory} className="btn btn-secondary" style={{ flex: 1 }}>Insert New</button>
+                              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Update</button>
+                              <button type="button" onClick={() => handleToggleCategoryStatus(categories.find(c => c.id === selectedCatId))} className="btn btn-secondary" style={{ flex: 1 }}>{categories.find(c => c.id === selectedCatId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
+                              <button type="button" onClick={() => handleDeleteCategory(selectedCatId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                            </>
+                          ) : (
+                            <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}>
+                              <Plus size={16} /> Add Machine Category Value
+                            </button>
+                          )}
+                        </div>
                       </form>
                     </div>
 
@@ -2814,7 +3043,9 @@ function App() {
                           const CategoryBadgeIcon = cat.icon === 'Monitor' ? Monitor : cat.icon === 'Laptop' ? Laptop : cat.icon === 'Gamepad2' ? Gamepad2 : Tv;
 
                           return (
-                            <div key={cat.id || cat.type} style={{ padding: '0.85rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div key={cat.id || cat.type} 
+                                 onClick={() => handleSelectCategory(cat)}
+                                 style={{ cursor: 'pointer', padding: '0.85rem 1rem', background: selectedCatId === cat.id ? 'rgba(0, 240, 255, 0.1)' : 'var(--bg-tertiary)', borderRadius: '8px', border: selectedCatId === cat.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: cat.isActive === false ? 0.6 : 1 }}>
                               <div style={{ flex: 1, paddingRight: '1rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
                                   <CategoryBadgeIcon size={16} color="var(--accent-cyan)" />
@@ -2846,16 +3077,30 @@ function App() {
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
 
-                  {/* Hardware Stations Link Console */}
+              {/* TAB 3.5: HARDWARE STATIONS */}
+              {adminTab === 'stations' && (
+                <div className="animated-fade">
+                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Cpu size={22} color="var(--accent-cyan)" /> Hardware Station Nodes Configurator
+                  </h3>
+                  
+                  {adminActionError && (
+                    <div style={{ color: 'var(--status-danger)', fontSize: '0.85rem', marginBottom: '1.25rem', padding: '0.75rem', background: 'rgba(255, 77, 77, 0.1)', borderRadius: '8px', border: '1px solid var(--status-danger)' }}>
+                      {adminActionError}
+                    </div>
+                  )}
+
                   <div className="glass-panel" style={{ padding: '1.5rem' }}>
                     <h4 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Cpu size={18} color="var(--accent-cyan)" /> Hardware Station Nodes under Managed Categories ({machines.length})
+                      Hardware Station Nodes ({machines.length})
                     </h4>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
                       {/* Add Node form */}
-                      <form onSubmit={handleCreateMachine}>
+                      <form onSubmit={handleSaveMachine}>
                         <div className="form-group">
                           <label className="form-label">Station Name</label>
                           <input 
@@ -2867,23 +3112,130 @@ function App() {
                           />
                         </div>
 
-                        <div className="form-group">
-                          <label className="form-label">Assigned Category</label>
-                          <select 
-                            className="form-input" 
-                            value={newMachineType}
-                            style={{ appearance: 'none', WebkitAppearance: 'none' }}
-                            onChange={(e) => setNewMachineType(e.target.value)}
-                          >
-                            {categories.map((cat) => (
-                              <option key={cat.id || cat.type} value={cat.type}>{cat.name} ({cat.type})</option>
-                            ))}
-                          </select>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Assigned Category</label>
+                            <select 
+                              className="form-input" 
+                              value={newMachineType}
+                              style={{ appearance: 'none', WebkitAppearance: 'none' }}
+                              onChange={(e) => setNewMachineType(e.target.value)}
+                            >
+                              {categories.map((cat) => (
+                                <option key={cat.id || cat.type} value={cat.type}>{cat.name} ({cat.type})</option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          <div className="form-group">
+                            <label className="form-label">Virtual IP</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="192.168.1.100"
+                              value={newMachineIp}
+                              onChange={(e) => setNewMachineIp(e.target.value)}
+                            />
+                          </div>
                         </div>
 
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem' }}>
-                          + Connect Station Node
-                        </button>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Active Game</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="Featured Cloud Title"
+                              value={newMachineGame}
+                              onChange={(e) => setNewMachineGame(e.target.value)}
+                            />
+                          </div>
+                          
+                          <div className="form-group">
+                            <label className="form-label">Server Region</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="Tokyo - Asia East"
+                              value={newMachineRegion}
+                              onChange={(e) => setNewMachineRegion(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Session Cost (Keys)</label>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            min="1"
+                            value={newMachineCost}
+                            onChange={(e) => setNewMachineCost(e.target.value)}
+                          />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">CPU Spec</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="Custom AMD Zen 2 8-Core"
+                              value={newMachineCpu}
+                              onChange={(e) => setNewMachineCpu(e.target.value)}
+                            />
+                          </div>
+                          
+                          <div className="form-group">
+                            <label className="form-label">GPU Spec</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="RDNA 2 Engine"
+                              value={newMachineGpu}
+                              onChange={(e) => setNewMachineGpu(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">RAM Spec</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="16GB GDDR6 Unified"
+                              value={newMachineRam}
+                              onChange={(e) => setNewMachineRam(e.target.value)}
+                            />
+                          </div>
+                          
+                          <div className="form-group">
+                            <label className="form-label">Resolution Output</label>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              placeholder="4K @ 60 FPS"
+                              value={newMachineResolution}
+                              onChange={(e) => setNewMachineResolution(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                          {selectedMachineId ? (
+                            <>
+                              <button type="button" onClick={handleClearMachine} className="btn btn-secondary" style={{ flex: 1 }}>Insert New</button>
+                              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Update</button>
+                              <button type="button" onClick={() => handleToggleMachineStatus(machines.find(m => m.id === selectedMachineId))} className="btn btn-secondary" style={{ flex: 1 }}>{machines.find(m => m.id === selectedMachineId)?.status !== 'offline' ? 'Set Offline' : 'Set Available'}</button>
+                              <button type="button" onClick={() => handleDeleteMachine(selectedMachineId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                            </>
+                          ) : (
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                              + Connect Station Node
+                            </button>
+                          )}
+                        </div>
                       </form>
 
                       {/* Connected Nodes List */}
@@ -2896,7 +3248,9 @@ function App() {
                           machines.map((m) => {
                             const catObj = categories.find(c => c.type === m.type);
                             return (
-                              <div key={m.id} style={{ padding: '0.6rem 0.85rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div key={m.id} 
+                                   onClick={() => handleSelectMachine(m)}
+                                   style={{ cursor: 'pointer', padding: '0.6rem 0.85rem', background: selectedMachineId === m.id ? 'rgba(0, 240, 255, 0.1)' : 'var(--bg-tertiary)', borderRadius: '6px', border: selectedMachineId === m.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: m.status === 'offline' ? 0.6 : 1 }}>
                                 <div>
                                   <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{m.name}</span>
                                   <span style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', marginLeft: '0.75rem' }}>
@@ -2958,7 +3312,7 @@ function App() {
                         Add Shop Package
                       </h4>
 
-                      <form onSubmit={handleCreatePackage} style={{ marginBottom: '1.5rem' }}>
+                      <form onSubmit={handleSavePackage} style={{ marginBottom: '1.5rem' }}>
                         <div className="form-group">
                           <label className="form-label">Package Title</label>
                           <input type="text" className="form-input" placeholder="e.g. Pro Streamer Pack" value={newPkgTitle} onChange={(e) => setNewPkgTitle(e.target.value)} />
@@ -2973,15 +3327,28 @@ function App() {
                             <input type="number" step="0.01" className="form-input" min="0.50" value={newPkgPrice} onChange={(e) => setNewPkgPrice(e.target.value)} />
                           </div>
                         </div>
-                        <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
-                          Add Package
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                          {selectedPkgId ? (
+                            <>
+                              <button type="button" onClick={handleClearPackage} className="btn btn-secondary" style={{ flex: 1 }}>Insert New</button>
+                              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Update</button>
+                              <button type="button" onClick={() => handleTogglePackageStatus(packages.find(p => p.id === selectedPkgId))} className="btn btn-secondary" style={{ flex: 1 }}>{packages.find(p => p.id === selectedPkgId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
+                              <button type="button" onClick={() => handleDeletePackage(selectedPkgId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                            </>
+                          ) : (
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+                              Add Package
+                            </button>
+                          )}
+                        </div>
                       </form>
 
                       {/* Package Listing */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         {packages.map((pkg) => (
-                          <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'var(--bg-tertiary)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                          <div key={pkg.id} 
+                               onClick={() => handleSelectPackage(pkg)}
+                               style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: selectedPkgId === pkg.id ? 'rgba(0, 240, 255, 0.1)' : 'var(--bg-tertiary)', borderRadius: '4px', border: selectedPkgId === pkg.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-color)', alignItems: 'center', opacity: pkg.isActive === false ? 0.6 : 1 }}>
                             <div style={{ color: 'var(--text-primary)', fontSize: '0.85rem' }}>{pkg.title} ({pkg.tokens} Keys - ${pkg.price?.toFixed(2)})</div>
                             <button onClick={() => handleDeletePackage(pkg.id)} className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem' }}>
                               <Trash2 size={12} color="var(--status-danger)" />

@@ -252,6 +252,16 @@ app.post('/api/categories', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
+app.put('/api/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const updated = await dbOps.updateCategory(req.params.id, req.body);
+    io.emit('categories_update', await dbOps.getCategories());
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.delete('/api/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     await dbOps.deleteCategory(req.params.id);
