@@ -1816,55 +1816,82 @@ function App() {
                 </p>
               </div>
 
-              {/* Games Grid Display (Cover Image & Game Title Only - Click Opens Blurred Detail Modal) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
-                {activeGames.slice(0, 4).map((game) => (
-                  <div 
-                    key={game.id} 
-                    onClick={() => setGameDetailModal(game)}
-                    className="glass-panel cyan-hover" 
-                    style={{ 
-                      borderRadius: '14px', 
-                      overflow: 'hidden', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      cursor: 'pointer',
-                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                      border: '1px solid var(--border-color)'
-                    }}
-                  >
-                    {/* Cover Image Container */}
-                    <div style={{ position: 'relative', height: '230px', overflow: 'hidden', background: '#0b0c10' }}>
-                      <img 
-                        src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
-                        alt={game.title} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                      />
-                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95) 0%, transparent 60%)' }} />
-
-                      {/* Category Badge Pill */}
-                      <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', border: '1px solid var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
-                        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-                          {game.categoryId?.toUpperCase() || 'CONSOLE'}
-                        </span>
-                      </div>
-
-                      {/* Details Hint Badge */}
-                      <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#fff' }}>
-                        <Info size={12} color="var(--accent-cyan)" /> Details & Play
-                      </div>
-                    </div>
-
-                    {/* Game Title Bar */}
-                    <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {game.title}
+              {/* Netflix Style Category-Wise Games Display */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', width: '100%', overflow: 'hidden' }}>
+                {activeCategories.map((cat) => {
+                  const catGames = activeGames.filter(g => g.categoryId === cat.type);
+                  if (catGames.length === 0) return null;
+                  
+                  return (
+                    <div key={cat.id} style={{ textAlign: 'left' }}>
+                      <h4 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '1rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--accent-cyan)' }}>
+                        {cat.name} Trending
                       </h4>
+                      <div style={{ 
+                        display: 'flex', 
+                        overflowX: 'auto', 
+                        gap: '1.5rem', 
+                        padding: '1rem 0.5rem',
+                        scrollSnapType: 'x mandatory',
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none'
+                      }}
+                      className="hide-scrollbar"
+                      >
+                        {catGames.map((game) => (
+                          <div 
+                            key={game.id} 
+                            onClick={() => setGameDetailModal(game)}
+                            className="glass-panel cyan-hover" 
+                            style={{ 
+                              flex: '0 0 auto',
+                              width: '240px',
+                              borderRadius: '14px', 
+                              overflow: 'hidden', 
+                              display: 'flex', 
+                              flexDirection: 'column', 
+                              cursor: 'pointer',
+                              scrollSnapAlign: 'start',
+                              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                              border: '1px solid var(--border-color)'
+                            }}
+                          >
+                            {/* Cover Image Container */}
+                            <div style={{ position: 'relative', height: '230px', overflow: 'hidden', background: '#0b0c10' }}>
+                              <img 
+                                src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
+                                alt={game.title} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                              />
+                              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95) 0%, transparent 60%)' }} />
+
+                              {/* Category Badge Pill */}
+                              <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', border: '1px solid var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                                <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                                  {game.categoryId?.toUpperCase() || 'CONSOLE'}
+                                </span>
+                              </div>
+
+                              {/* Details Hint Badge */}
+                              <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#fff' }}>
+                                <Info size={12} color="var(--accent-cyan)" /> Details & Play
+                              </div>
+                            </div>
+
+                            {/* Game Title Bar */}
+                            <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {game.title}
+                              </h4>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

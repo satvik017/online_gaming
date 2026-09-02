@@ -252,6 +252,10 @@ p {
   animation: fadeIn 0.4s ease forwards;
 }
 
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes glitch {
   0% { transform: translate(0) }
   20% { transform: translate(-2px, 2px) }
