@@ -325,6 +325,68 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
+// Create Game Request
+app.post('/api/games/:id/play-request', authenticateToken, async (req, res) => {
+  const gameId = req.params.id;
+  try {
+    const game = await dbOps.getGameById(gameId);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    
+    if (req.user.tokenBalance < game.tokenCost) {
+      return res.status(400).json({ error: 'Insufficient Token Keys' });
+    }
+
+    const request = await dbOps.createGameRequest(req.user.id, req.user.username, game.id, game.title);
+    io.emit('admin_game_request', request);
+    res.json(request);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin Get Requests
+app.get('/api/admin/requests', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const requests = await dbOps.getPendingGameRequests();
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin Approve Request
+app.post('/api/admin/requests/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
+  const { code, link } = req.body;
+  if (!code || !link) return res.status(400).json({ error: 'Code and link are required' });
+
+  try {
+    const request = await dbOps.updateGameRequest(req.params.id, 'approved', code, link);
+    
+    // Deduct tokens
+    const game = await dbOps.getGameById(request.gameId);
+    if (game) {
+      await dbOps.addTransaction(request.userId, 'spend', game.tokenCost);
+      await dbOps.updateUserBalance(request.userId, -game.tokenCost);
+    }
+
+    io.emit('game_request_status_update', request);
+    res.json(request);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin Reject Request
+app.post('/api/admin/requests/:id/reject', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const request = await dbOps.updateGameRequest(req.params.id, 'rejected');
+    io.emit('game_request_status_update', request);
+    res.json(request);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // REST route to initiate play for a Game
 app.post('/api/games/:id/play', authenticateToken, async (req, res) => {
   const gameId = req.params.id;
