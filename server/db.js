@@ -79,7 +79,8 @@ const PackageSchema = new mongoose.Schema({
 
 const SettingsSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true, default: 'global' },
-  sessionDurationMinutes: { type: Number, default: 15 } // duration in minutes per token session
+  sessionDurationMinutes: { type: Number, default: 15 }, // duration in minutes per token session
+  homeBackgroundImageUrl: { type: String, default: '' }
 }, { timestamps: true });
 
 const CategorySchema = new mongoose.Schema({

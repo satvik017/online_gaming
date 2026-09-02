@@ -218,12 +218,16 @@ app.get('/api/settings', async (req, res) => {
 
 app.put('/api/settings', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { sessionDurationMinutes } = req.body;
+    const { sessionDurationMinutes, homeBackgroundImageUrl } = req.body;
     const duration = parseInt(sessionDurationMinutes);
     if (!duration || duration <= 0) {
       return res.status(400).json({ error: 'Invalid session duration' });
     }
-    const updated = await dbOps.updateSettings({ sessionDurationMinutes: duration });
+    const updatePayload = { sessionDurationMinutes: duration };
+    if (homeBackgroundImageUrl !== undefined) {
+      updatePayload.homeBackgroundImageUrl = homeBackgroundImageUrl;
+    }
+    const updated = await dbOps.updateSettings(updatePayload);
     io.emit('settings_update', updated);
     res.json(updated);
   } catch (error) {

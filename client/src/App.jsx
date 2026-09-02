@@ -229,13 +229,14 @@ function App() {
     { id: 'pkg_pro', tokens: 12, price: 10.00, title: 'Gamer Pack', desc: 'Most Popular. Extra play time.', recommended: true },
     { id: 'pkg_elite', tokens: 30, price: 20.00, title: 'Pro Streamer Pack', desc: 'Ultimate package for hardcore gamers.' }
   ]);
-  const [systemSettings, setSystemSettings] = useState({ sessionDurationMinutes: 15 });
+  const [systemSettings, setSystemSettings] = useState({ sessionDurationMinutes: 15, homeBackgroundImageUrl: '' });
   const [newPkgTitle, setNewPkgTitle] = useState('');
   const [newPkgTokens, setNewPkgTokens] = useState(10);
   const [newPkgPrice, setNewPkgPrice] = useState(10.00);
   const [newPkgDesc, setNewPkgDesc] = useState('');
   const [newPkgRecommended, setNewPkgRecommended] = useState(false);
   const [configDurationMinutes, setConfigDurationMinutes] = useState(15);
+  const [configHomeBgUrl, setConfigHomeBgUrl] = useState('');
   const [packageActionError, setPackageActionError] = useState('');
   const [settingsActionError, setSettingsActionError] = useState('');
 
@@ -371,6 +372,9 @@ function App() {
       setSystemSettings(updatedSettings);
       if (updatedSettings.sessionDurationMinutes) {
         setConfigDurationMinutes(updatedSettings.sessionDurationMinutes);
+      }
+      if (updatedSettings.homeBackgroundImageUrl !== undefined) {
+        setConfigHomeBgUrl(updatedSettings.homeBackgroundImageUrl);
       }
     });
 
@@ -1275,7 +1279,7 @@ function App() {
     }
   };
 
-  const handleUpdateSessionDuration = async (e) => {
+  const handleUpdateSettings = async (e) => {
     e.preventDefault();
     setSettingsActionError('');
     try {
@@ -1287,11 +1291,14 @@ function App() {
 
       const res = await apiFetch('/api/settings', {
         method: 'PUT',
-        body: JSON.stringify({ sessionDurationMinutes: duration })
+        body: JSON.stringify({ 
+          sessionDurationMinutes: duration,
+          homeBackgroundImageUrl: configHomeBgUrl 
+        })
       });
 
       setSystemSettings(res);
-      alert(`Per-Token Play Duration updated to ${duration} minutes per token.`);
+      alert('Global settings updated successfully.');
     } catch (err) {
       setSettingsActionError(err.message);
     }
@@ -1701,7 +1708,18 @@ function App() {
           <div className="animated-fade" style={{ padding: '2rem 0 4rem 0' }}>
             
             {/* HERO BANNER SECTION */}
-            <div style={{ textAlign: 'center', marginBottom: '4rem', position: 'relative' }}>
+            <div style={{ 
+              textAlign: 'center', 
+              marginBottom: '4rem', 
+              position: 'relative',
+              padding: '4rem 2rem',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              background: systemSettings.homeBackgroundImageUrl ? `linear-gradient(to bottom, rgba(11,12,16,0.6), var(--bg-primary)), url(${systemSettings.homeBackgroundImageUrl})` : 'transparent',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              border: systemSettings.homeBackgroundImageUrl ? '1px solid var(--border-color)' : 'none'
+            }}>
               
               {/* Badge Tag Pill */}
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0, 243, 255, 0.08)', border: '1px solid rgba(0, 243, 255, 0.25)', padding: '0.4rem 1.25rem', borderRadius: '30px', marginBottom: '1.5rem', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
@@ -3316,7 +3334,7 @@ function App() {
                         Per-Token Play Duration (Minutes)
                       </h4>
 
-                      <form onSubmit={handleUpdateSessionDuration}>
+                      <form onSubmit={handleUpdateSettings}>
                         <div className="form-group">
                           <label className="form-label">Minutes per Token Session</label>
                           <input 
@@ -3331,8 +3349,20 @@ function App() {
                             Current Rate: <strong>1 Token = {systemSettings.sessionDurationMinutes || 15} Minutes</strong> stream session
                           </span>
                         </div>
-                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
-                          Save Session Rate
+
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                          <label className="form-label">Home Background Image URL</label>
+                          <input 
+                            type="text" 
+                            className="form-input form-input-cyan" 
+                            placeholder="https://example.com/bg.jpg"
+                            value={configHomeBgUrl}
+                            onChange={(e) => setConfigHomeBgUrl(e.target.value)}
+                          />
+                        </div>
+
+                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}>
+                          Save System Settings
                         </button>
                       </form>
                     </div>
