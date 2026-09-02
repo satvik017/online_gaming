@@ -104,8 +104,8 @@ p {
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-purple);
-  box-shadow: 0 0 10px var(--accent-purple-glow);
+  background: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan-glow);
 }
 
 /* Common Layout Elements */
@@ -139,7 +139,7 @@ p {
 
 /* Text Glow */
 .text-glow-purple {
-  text-shadow: 0 0 8px var(--accent-purple-glow);
+  text-shadow: 0 0 8px var(--accent-cyan-glow);
 }
 .text-glow-cyan {
   text-shadow: 0 0 8px var(--accent-cyan-glow);
@@ -167,13 +167,13 @@ p {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(220, 90%, 48%));
+  background: linear-gradient(135deg, var(--accent-cyan), hsl(192, 95%, 34%));
   color: #ffffff;
-  box-shadow: 0 4px 15px var(--accent-purple-glow);
+  box-shadow: 0 4px 15px var(--accent-cyan-glow);
 }
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px var(--accent-purple), 0 0 10px var(--accent-purple-glow);
+  box-shadow: 0 6px 20px var(--accent-cyan), 0 0 10px var(--accent-cyan-glow);
 }
 
 .btn-cyan {
@@ -250,6 +250,10 @@ p {
 
 .animated-fade {
   animation: fadeIn 0.4s ease forwards;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes glitch {

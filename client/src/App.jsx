@@ -229,13 +229,14 @@ function App() {
     { id: 'pkg_pro', tokens: 12, price: 10.00, title: 'Gamer Pack', desc: 'Most Popular. Extra play time.', recommended: true },
     { id: 'pkg_elite', tokens: 30, price: 20.00, title: 'Pro Streamer Pack', desc: 'Ultimate package for hardcore gamers.' }
   ]);
-  const [systemSettings, setSystemSettings] = useState({ sessionDurationMinutes: 15 });
+  const [systemSettings, setSystemSettings] = useState({ sessionDurationMinutes: 15, homeBackgroundImageUrl: '' });
   const [newPkgTitle, setNewPkgTitle] = useState('');
   const [newPkgTokens, setNewPkgTokens] = useState(10);
   const [newPkgPrice, setNewPkgPrice] = useState(10.00);
   const [newPkgDesc, setNewPkgDesc] = useState('');
   const [newPkgRecommended, setNewPkgRecommended] = useState(false);
   const [configDurationMinutes, setConfigDurationMinutes] = useState(15);
+  const [configHomeBgUrl, setConfigHomeBgUrl] = useState('');
   const [packageActionError, setPackageActionError] = useState('');
   const [settingsActionError, setSettingsActionError] = useState('');
 
@@ -371,6 +372,9 @@ function App() {
       setSystemSettings(updatedSettings);
       if (updatedSettings.sessionDurationMinutes) {
         setConfigDurationMinutes(updatedSettings.sessionDurationMinutes);
+      }
+      if (updatedSettings.homeBackgroundImageUrl !== undefined) {
+        setConfigHomeBgUrl(updatedSettings.homeBackgroundImageUrl);
       }
     });
 
@@ -1275,7 +1279,7 @@ function App() {
     }
   };
 
-  const handleUpdateSessionDuration = async (e) => {
+  const handleUpdateSettings = async (e) => {
     e.preventDefault();
     setSettingsActionError('');
     try {
@@ -1287,11 +1291,14 @@ function App() {
 
       const res = await apiFetch('/api/settings', {
         method: 'PUT',
-        body: JSON.stringify({ sessionDurationMinutes: duration })
+        body: JSON.stringify({ 
+          sessionDurationMinutes: duration,
+          homeBackgroundImageUrl: configHomeBgUrl 
+        })
       });
 
       setSystemSettings(res);
-      alert(`Per-Token Play Duration updated to ${duration} minutes per token.`);
+      alert('Global settings updated successfully.');
     } catch (err) {
       setSettingsActionError(err.message);
     }
@@ -1340,7 +1347,7 @@ function App() {
     <div className="app-container">
       {/* Header / Navbar */}
       <header className="glass-panel" style={{ margin: '1rem', borderBottom: '1px solid var(--border-color)', borderRadius: '12px', zIndex: 100, position: 'relative' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ width: '100%', padding: '0.75rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => { setCurrentView(token ? 'lobby' : 'landing'); setMobileMenuOpen(false); }}>
@@ -1694,14 +1701,26 @@ function App() {
       </header>
 
       {/* Main Container View Controller */}
-      <main style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '1rem 2rem' }}>
+      <main style={{ flex: 1, width: '100%', padding: '1rem 2rem' }}>
         
         {/* LANDING PAGE / ATTRACTIVE HOME SCREEN */}
         {currentView === 'landing' && (
-          <div className="animated-fade" style={{ padding: '2rem 0 4rem 0' }}>
+          <div className="animated-fade" style={{ padding: '1rem 0 2rem 0' }}>
             
             {/* HERO BANNER SECTION */}
-            <div style={{ textAlign: 'center', marginBottom: '4rem', position: 'relative' }}>
+            <div style={{ 
+              textAlign: 'center', 
+              marginBottom: '2rem', 
+              position: 'relative',
+              padding: '3rem 2rem',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              backgroundImage: systemSettings.homeBackgroundImageUrl ? `linear-gradient(to bottom, rgba(11,12,16,0.6), var(--bg-primary)), url("${systemSettings.homeBackgroundImageUrl}")` : 'none',
+              backgroundSize: '100% 100%',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              border: systemSettings.homeBackgroundImageUrl ? '1px solid var(--border-color)' : 'none'
+            }}>
               
               {/* Badge Tag Pill */}
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0, 243, 255, 0.08)', border: '1px solid rgba(0, 243, 255, 0.25)', padding: '0.4rem 1.25rem', borderRadius: '30px', marginBottom: '1.5rem', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
@@ -1731,7 +1750,7 @@ function App() {
               </p>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '3.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '2.5rem' }}>
                 <button 
                   onClick={() => setCurrentView(token ? 'lobby' : 'register')} 
                   className="btn btn-primary" 
@@ -1803,8 +1822,8 @@ function App() {
             </div>
 
             {/* DYNAMIC POPULAR GAMES SPOTLIGHT FROM DATABASE (OVERVIEW 4 TITLES ONLY) */}
-            <div id="popular-games-section" style={{ marginTop: '5rem', marginBottom: '5rem' }}>
-              <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div id="popular-games-section" style={{ marginTop: '2rem', marginBottom: '3rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
                   <Flame size={18} /> Featured Library Overview
                 </div>
@@ -1816,55 +1835,86 @@ function App() {
                 </p>
               </div>
 
-              {/* Games Grid Display (Cover Image & Game Title Only - Click Opens Blurred Detail Modal) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
-                {activeGames.slice(0, 4).map((game) => (
-                  <div 
-                    key={game.id} 
-                    onClick={() => setGameDetailModal(game)}
-                    className="glass-panel cyan-hover" 
-                    style={{ 
-                      borderRadius: '14px', 
-                      overflow: 'hidden', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      cursor: 'pointer',
-                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                      border: '1px solid var(--border-color)'
-                    }}
-                  >
-                    {/* Cover Image Container */}
-                    <div style={{ position: 'relative', height: '230px', overflow: 'hidden', background: '#0b0c10' }}>
-                      <img 
-                        src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
-                        alt={game.title} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                      />
-                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95) 0%, transparent 60%)' }} />
-
-                      {/* Category Badge Pill */}
-                      <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', border: '1px solid var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
-                        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-                          {game.categoryId?.toUpperCase() || 'CONSOLE'}
-                        </span>
+              {/* Category-Wise Games Display with Grid & View All Button */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', width: '100%' }}>
+                {activeCategories.map((cat) => {
+                  const catGames = activeGames.filter(g => g.categoryId === cat.type);
+                  if (catGames.length === 0) return null;
+                  
+                  return (
+                    <div key={cat.id} style={{ textAlign: 'left' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--accent-cyan)' }}>
+                        <h4 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', margin: 0 }}>
+                          {cat.name} Trending
+                        </h4>
+                        <button 
+                          onClick={() => {
+                            if (token) {
+                              setCurrentView('lobby');
+                              setSelectedLobbyCategory(cat.type);
+                            } else {
+                              setCurrentView('register');
+                            }
+                          }}
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.35rem 0.9rem', fontSize: '0.75rem' }}
+                        >
+                          View All
+                        </button>
                       </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+                        {catGames.slice(0, 4).map((game) => (
+                          <div 
+                            key={game.id} 
+                            onClick={() => setGameDetailModal(game)}
+                            className="glass-panel cyan-hover" 
+                            style={{ 
+                              borderRadius: '14px', 
+                              overflow: 'hidden', 
+                              display: 'flex', 
+                              flexDirection: 'column', 
+                              cursor: 'pointer',
+                              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                              border: '1px solid var(--border-color)'
+                            }}
+                          >
+                            {/* Cover Image Container */}
+                            <div style={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: '#0b0c10' }}>
+                              <img 
+                                src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
+                                alt={game.title} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                              />
+                              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95) 0%, transparent 60%)' }} />
 
-                      {/* Details Hint Badge */}
-                      <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#fff' }}>
-                        <Info size={12} color="var(--accent-cyan)" /> Details & Play
+                              {/* Category Badge Pill */}
+                              <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', border: '1px solid var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                                <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                                  {game.categoryId?.toUpperCase() || 'CONSOLE'}
+                                </span>
+                              </div>
+
+                              {/* Details Hint Badge */}
+                              <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#fff' }}>
+                                <Info size={12} color="var(--accent-cyan)" /> Details & Play
+                              </div>
+                            </div>
+
+                            {/* Game Title Bar */}
+                            <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {game.title}
+                              </h4>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-
-                    {/* Game Title Bar */}
-                    <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {game.title}
-                      </h4>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -3279,13 +3329,13 @@ function App() {
                   </h3>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                    {/* Session Duration Configurator */}
+                    {/* Global System Settings Configurator */}
                     <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
                       <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
-                        Per-Token Play Duration (Minutes)
+                        Global System Settings
                       </h4>
 
-                      <form onSubmit={handleUpdateSessionDuration}>
+                      <form onSubmit={handleUpdateSettings}>
                         <div className="form-group">
                           <label className="form-label">Minutes per Token Session</label>
                           <input 
@@ -3300,8 +3350,20 @@ function App() {
                             Current Rate: <strong>1 Token = {systemSettings.sessionDurationMinutes || 15} Minutes</strong> stream session
                           </span>
                         </div>
-                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
-                          Save Session Rate
+
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                          <label className="form-label">Home Background Image URL</label>
+                          <input 
+                            type="text" 
+                            className="form-input form-input-cyan" 
+                            placeholder="https://example.com/bg.jpg"
+                            value={configHomeBgUrl}
+                            onChange={(e) => setConfigHomeBgUrl(e.target.value)}
+                          />
+                        </div>
+
+                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}>
+                          Save System Settings
                         </button>
                       </form>
                     </div>
