@@ -1816,48 +1816,52 @@ function App() {
                 </p>
               </div>
 
-              {/* Netflix Style Category-Wise Games Display */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', width: '100%', overflow: 'hidden' }}>
+              {/* Category-Wise Games Display with Grid & View All Button */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', width: '100%' }}>
                 {activeCategories.map((cat) => {
                   const catGames = activeGames.filter(g => g.categoryId === cat.type);
                   if (catGames.length === 0) return null;
                   
                   return (
                     <div key={cat.id} style={{ textAlign: 'left' }}>
-                      <h4 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '1rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--accent-cyan)' }}>
-                        {cat.name} Trending
-                      </h4>
-                      <div style={{ 
-                        display: 'flex', 
-                        overflowX: 'auto', 
-                        gap: '1.5rem', 
-                        padding: '1rem 0.5rem',
-                        scrollSnapType: 'x mandatory',
-                        scrollbarWidth: 'none',
-                        msOverflowStyle: 'none'
-                      }}
-                      className="hide-scrollbar"
-                      >
-                        {catGames.map((game) => (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--accent-cyan)' }}>
+                        <h4 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', margin: 0 }}>
+                          {cat.name} Trending
+                        </h4>
+                        <button 
+                          onClick={() => {
+                            if (token) {
+                              setCurrentView('lobby');
+                              setSelectedLobbyCategory(cat.type);
+                            } else {
+                              setCurrentView('register');
+                            }
+                          }}
+                          className="btn btn-secondary" 
+                          style={{ padding: '0.35rem 0.9rem', fontSize: '0.75rem' }}
+                        >
+                          View All
+                        </button>
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+                        {catGames.slice(0, 4).map((game) => (
                           <div 
                             key={game.id} 
                             onClick={() => setGameDetailModal(game)}
                             className="glass-panel cyan-hover" 
                             style={{ 
-                              flex: '0 0 auto',
-                              width: '240px',
                               borderRadius: '14px', 
                               overflow: 'hidden', 
                               display: 'flex', 
                               flexDirection: 'column', 
                               cursor: 'pointer',
-                              scrollSnapAlign: 'start',
                               transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                               border: '1px solid var(--border-color)'
                             }}
                           >
                             {/* Cover Image Container */}
-                            <div style={{ position: 'relative', height: '230px', overflow: 'hidden', background: '#0b0c10' }}>
+                            <div style={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: '#0b0c10' }}>
                               <img 
                                 src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
                                 alt={game.title} 
