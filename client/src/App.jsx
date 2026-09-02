@@ -1347,7 +1347,7 @@ function App() {
     <div className="app-container">
       {/* Header / Navbar */}
       <header className="glass-panel" style={{ margin: '1rem', borderBottom: '1px solid var(--border-color)', borderRadius: '12px', zIndex: 100, position: 'relative' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ width: '100%', padding: '0.75rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => { setCurrentView(token ? 'lobby' : 'landing'); setMobileMenuOpen(false); }}>
@@ -1701,23 +1701,24 @@ function App() {
       </header>
 
       {/* Main Container View Controller */}
-      <main style={{ flex: 1, maxWidth: '1200px', width: '100%', margin: '0 auto', padding: '1rem 2rem' }}>
+      <main style={{ flex: 1, width: '100%', padding: '1rem 2rem' }}>
         
         {/* LANDING PAGE / ATTRACTIVE HOME SCREEN */}
         {currentView === 'landing' && (
-          <div className="animated-fade" style={{ padding: '2rem 0 4rem 0' }}>
+          <div className="animated-fade" style={{ padding: '1rem 0 2rem 0' }}>
             
             {/* HERO BANNER SECTION */}
             <div style={{ 
               textAlign: 'center', 
-              marginBottom: '4rem', 
+              marginBottom: '2rem', 
               position: 'relative',
-              padding: '4rem 2rem',
+              padding: '3rem 2rem',
               borderRadius: '24px',
               overflow: 'hidden',
-              background: systemSettings.homeBackgroundImageUrl ? `linear-gradient(to bottom, rgba(11,12,16,0.6), var(--bg-primary)), url(${systemSettings.homeBackgroundImageUrl})` : 'transparent',
-              backgroundSize: 'cover',
+              backgroundImage: systemSettings.homeBackgroundImageUrl ? `linear-gradient(to bottom, rgba(11,12,16,0.6), var(--bg-primary)), url("${systemSettings.homeBackgroundImageUrl}")` : 'none',
+              backgroundSize: '100% 100%',
               backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
               border: systemSettings.homeBackgroundImageUrl ? '1px solid var(--border-color)' : 'none'
             }}>
               
@@ -1749,7 +1750,7 @@ function App() {
               </p>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '3.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '1.25rem', marginBottom: '2.5rem' }}>
                 <button 
                   onClick={() => setCurrentView(token ? 'lobby' : 'register')} 
                   className="btn btn-primary" 
@@ -1821,8 +1822,8 @@ function App() {
             </div>
 
             {/* DYNAMIC POPULAR GAMES SPOTLIGHT FROM DATABASE (OVERVIEW 4 TITLES ONLY) */}
-            <div id="popular-games-section" style={{ marginTop: '5rem', marginBottom: '5rem' }}>
-              <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+            <div id="popular-games-section" style={{ marginTop: '2rem', marginBottom: '3rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
                   <Flame size={18} /> Featured Library Overview
                 </div>
@@ -3328,10 +3329,10 @@ function App() {
                   </h3>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                    {/* Session Duration Configurator */}
+                    {/* Global System Settings Configurator */}
                     <div className="glass-panel" style={{ padding: '1.5rem', height: 'fit-content' }}>
                       <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.25rem' }}>
-                        Per-Token Play Duration (Minutes)
+                        Global System Settings
                       </h4>
 
                       <form onSubmit={handleUpdateSettings}>
