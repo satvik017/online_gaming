@@ -41,7 +41,8 @@ import {
   ArrowRight,
   Menu,
   X,
-  Info
+  Info,
+  Copy
 } from 'lucide-react';
 import { uploadGameCoverToSupabase, isSupabaseConfigured } from './supabase.js';
 
@@ -161,8 +162,16 @@ function App() {
   const [gameDetailModal, setGameDetailModal] = useState(null); // null or selected game object for blurred popup modal
   const [launchingGameId, setLaunchingGameId] = useState(null);
 
+  // Manual Game Session Approval Workflow State
+  const [activeGameRequest, setActiveGameRequest] = useState(null); // stores user's current request
+  const [requestWaitTimer, setRequestWaitTimer] = useState(0); // 2 minutes countdown (120s)
+  const [pendingRequests, setPendingRequests] = useState([]); // for admin dashboard
+  const [approvingRequestId, setApprovingRequestId] = useState(null);
+  const [approveCode, setApproveCode] = useState('');
+  const [approveLink, setApproveLink] = useState('');
+
   // Admin Sidebar & Users State
-  const [adminTab, setAdminTab] = useState('overview'); // overview, games, nodes, pricing, sessions, players
+  const [adminTab, setAdminTab] = useState('overview'); // overview, games, nodes, pricing, sessions, players, requests
   const [adminUsersList, setAdminUsersList] = useState([]);
 
   // Admin selected items for CRUD operations
@@ -410,6 +419,21 @@ function App() {
       }
     });
 
+    socketRef.current.on('admin_game_request', (req) => {
+      // Admin receives a new request
+      setPendingRequests(prev => [...prev, req]);
+    });
+
+    socketRef.current.on('game_request_status_update', (req) => {
+      // Admin sees updates (if multiple admins) or user sees their request updated
+      setPendingRequests(prev => prev.map(r => r.id === req.id ? req : r).filter(r => r.status === 'pending'));
+      setActiveGameRequest(prev => prev && prev.id === req.id ? req : prev);
+      
+      if (req.status === 'approved') {
+        fetchCurrentUser(); // refresh tokens
+      }
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -431,6 +455,10 @@ function App() {
       setAdminStats(stats);
       const activeSess = await apiFetch('/api/admin/sessions');
       setAdminSessions(activeSess);
+      
+      const requests = await apiFetch('/api/admin/requests');
+      setPendingRequests(requests);
+
       fetchAdminUsers();
     } catch (err) {
       console.error(err);
@@ -974,43 +1002,29 @@ function App() {
   const handleLaunchGame = async (game) => {
     setLaunchingGameId(game.id);
     try {
-      const res = await apiFetch(`/api/games/${game.id}/play`, {
+      const res = await apiFetch(`/api/games/${game.id}/play-request`, {
         method: 'POST'
       });
 
-      setUser((prev) => prev ? ({ ...prev, tokenBalance: res.tokenBalance }) : null);
-
-      setSelectedMachine({
-        id: res.machineId,
-        name: res.machineName,
-        activeGame: res.gameTitle,
-        type: game.categoryId
-      });
-
-      setActiveSession({
-        id: res.sessionId,
-        machineId: res.machineId,
-        startTime: new Date()
-      });
-
-      setSessionSecondsLeft(res.durationSec);
-      setSessionLogs([
-        `[System] Initializing cloud game session for ${game.title}...`,
-        `[System] Reserved virtual host node ${res.machineName} (${game.categoryId.toUpperCase()})...`
-      ]);
-
-      if (socketRef.current) {
-        socketRef.current.emit('join_play_room', {
-          token,
-          machineId: res.machineId,
-          sessionId: res.sessionId
+      setActiveGameRequest(res);
+      setRequestWaitTimer(120); // 2 minutes
+      setCurrentView('waiting');
+      
+      // Start countdown
+      const countdownInterval = setInterval(() => {
+        setRequestWaitTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownInterval);
+            // Handle timeout
+            setActiveGameRequest(current => current && current.status === 'pending' ? { ...current, status: 'timeout' } : current);
+            return 0;
+          }
+          return prev - 1;
         });
-      }
+      }, 1000);
 
-      setCurrentView('play');
-      setupVirtualGameCanvas();
     } catch (err) {
-      alert(`Launch Failed: ${err.message}`);
+      alert(`Launch Request Failed: ${err.message}`);
     } finally {
       setLaunchingGameId(null);
     }
@@ -2288,7 +2302,120 @@ function App() {
           </div>
         )}
 
-        {/* VIRTUAL GAMEPLAY PLAYROOM */}
+        {/* WAITING FOR APPROVAL SCREEN */}
+        {currentView === 'waiting' && activeGameRequest && (
+          <div className="animated-fade" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '2rem' }}>
+            <div className="glass-panel" style={{ padding: '3rem', width: '100%', maxWidth: '500px', textAlign: 'center' }}>
+              
+              {activeGameRequest.status === 'pending' && (
+                <>
+                  <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(0, 243, 255, 0.1)', border: '2px solid var(--accent-cyan)', marginBottom: '2rem', animation: 'pulse 2s infinite' }}>
+                    <Activity size={32} color="var(--accent-cyan)" />
+                  </div>
+                  <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>Requesting Access</h2>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '1.1rem' }}>
+                    Waiting for an admin to approve your session for <strong style={{ color: 'var(--text-primary)' }}>{activeGameRequest.gameTitle}</strong>.
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginBottom: '2.5rem' }}>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Estimated Wait Time</div>
+                    <div style={{ fontSize: '2.5rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                      {Math.floor(requestWaitTimer / 60)}:{(requestWaitTimer % 60).toString().padStart(2, '0')}
+                    </div>
+                  </div>
+
+                  <button className="btn btn-secondary" onClick={() => setCurrentView('lobby')}>
+                    Cancel Request
+                  </button>
+                </>
+              )}
+
+              {activeGameRequest.status === 'timeout' && (
+                <>
+                  <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255, 80, 80, 0.1)', border: '2px solid var(--status-danger)', marginBottom: '2rem' }}>
+                    <X size={32} color="var(--status-danger)" />
+                  </div>
+                  <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: 'var(--status-danger)' }}>Request Timed Out</h2>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem' }}>
+                    No admins were available to approve your session. Your tokens have not been deducted.
+                  </p>
+                  <button className="btn btn-cyan" onClick={() => setCurrentView('lobby')}>
+                    Return to Lobby
+                  </button>
+                </>
+              )}
+
+              {activeGameRequest.status === 'rejected' && (
+                <>
+                  <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255, 80, 80, 0.1)', border: '2px solid var(--status-danger)', marginBottom: '2rem' }}>
+                    <X size={32} color="var(--status-danger)" />
+                  </div>
+                  <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: 'var(--status-danger)' }}>Request Denied</h2>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem' }}>
+                    An admin rejected your session request. Your tokens have not been deducted.
+                  </p>
+                  <button className="btn btn-cyan" onClick={() => setCurrentView('lobby')}>
+                    Return to Lobby
+                  </button>
+                </>
+              )}
+
+              {activeGameRequest.status === 'approved' && (
+                <>
+                  <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(50, 255, 120, 0.1)', border: '2px solid var(--status-success)', marginBottom: '2rem' }}>
+                    <CheckCircle2 size={32} color="var(--status-success)" />
+                  </div>
+                  <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: 'var(--status-success)' }}>Session Approved!</h2>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                    Your session for <strong style={{ color: 'var(--text-primary)' }}>{activeGameRequest.gameTitle}</strong> is ready.
+                  </p>
+                  
+                  <div style={{ background: 'var(--bg-primary)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '2rem' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Access Code</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <code style={{ flex: 1, padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '6px', fontSize: '1.2rem', color: 'var(--accent-cyan)', letterSpacing: '2px' }}>
+                        {activeGameRequest.code}
+                      </code>
+                      <button 
+                        className="btn btn-secondary" 
+                        style={{ padding: '0.75rem' }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(activeGameRequest.code);
+                          alert('Code copied to clipboard!');
+                        }}
+                      >
+                        <Copy size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <a 
+                      href={activeGameRequest.link} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="btn btn-cyan"
+                      style={{ padding: '1rem', fontSize: '1.1rem', width: '100%', textDecoration: 'none' }}
+                      onClick={() => {
+                        // After opening the game, user might want to go to play view to see their token timer
+                        setCurrentView('play'); 
+                        setActiveSession({ startTime: new Date(), fake: true });
+                        setSessionSecondsLeft(systemSettings.sessionDurationMinutes * 60);
+                      }}
+                    >
+                      <Zap size={20} /> Open to Play Game
+                    </a>
+                    <button className="btn btn-secondary" onClick={() => setCurrentView('lobby')}>
+                      Return to Lobby
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ACTIVE PLAY SESSION VIEW (CANVAS STREAM) */}
         {currentView === 'play' && selectedMachine && (
           <div className="animated-fade">
             {/* Session stats top bar */}
@@ -2753,6 +2880,19 @@ function App() {
                   style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
                 >
                   <Users size={16} /> Registered Players ({adminUsersList.length})
+                </button>
+
+                <button 
+                  onClick={() => setAdminTab('requests')} 
+                  className={`btn ${adminTab === 'requests' ? 'btn-cyan' : 'btn-secondary'}`}
+                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem', position: 'relative' }}
+                >
+                  <Activity size={16} /> Game Requests
+                  {pendingRequests.length > 0 && (
+                    <span style={{ position: 'absolute', right: '10px', background: 'var(--status-danger)', color: 'white', borderRadius: '50%', padding: '2px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                      {pendingRequests.length}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -3486,6 +3626,118 @@ function App() {
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* GAME REQUESTS TAB */}
+              {adminTab === 'requests' && (
+                <div className="animated-fade">
+                  <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <Activity size={20} color="var(--accent-cyan)" /> Pending Game Requests
+                  </h3>
+                  
+                  {pendingRequests.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem 2rem', background: 'var(--bg-tertiary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                      <Activity size={48} color="var(--text-muted)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                      <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Pending Requests</h4>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>All players are currently in game or offline.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                      {pendingRequests.map(req => (
+                        <div key={req.id} style={{ background: 'var(--bg-tertiary)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '0.3rem' }}>{req.gameTitle}</h4>
+                              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>Requested by: <strong style={{ color: 'var(--accent-cyan)' }}>@{req.username}</strong></p>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {new Date(req.createdAt).toLocaleTimeString()}
+                            </div>
+                          </div>
+                          
+                          {approvingRequestId === req.id ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                              <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="Enter Game Access Code" 
+                                value={approveCode} 
+                                onChange={(e) => setApproveCode(e.target.value)} 
+                              />
+                              <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="Enter Play URL Link" 
+                                value={approveLink} 
+                                onChange={(e) => setApproveLink(e.target.value)} 
+                              />
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <button 
+                                  className="btn btn-cyan" 
+                                  style={{ flex: 1, padding: '0.5rem' }}
+                                  onClick={async () => {
+                                    if (!approveCode || !approveLink) return alert('Code and Link required');
+                                    try {
+                                      await apiFetch(`/api/admin/requests/${req.id}/approve`, {
+                                        method: 'POST',
+                                        body: JSON.stringify({ code: approveCode, link: approveLink })
+                                      });
+                                      setApprovingRequestId(null);
+                                      setApproveCode('');
+                                      setApproveLink('');
+                                      setPendingRequests(prev => prev.filter(r => r.id !== req.id));
+                                    } catch (err) {
+                                      alert(err.message);
+                                    }
+                                  }}
+                                >
+                                  Submit Approval
+                                </button>
+                                <button 
+                                  className="btn btn-secondary" 
+                                  style={{ padding: '0.5rem 1rem' }}
+                                  onClick={() => setApprovingRequestId(null)}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                              <button 
+                                className="btn btn-cyan" 
+                                style={{ flex: 1, padding: '0.75rem', fontSize: '0.9rem' }}
+                                onClick={() => {
+                                  setApprovingRequestId(req.id);
+                                  setApproveCode('');
+                                  setApproveLink('');
+                                }}
+                              >
+                                <CheckCircle2 size={16} /> Approve Request
+                              </button>
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ padding: '0.75rem 1.5rem', fontSize: '0.9rem', color: 'var(--status-danger)' }}
+                                onClick={async () => {
+                                  if (confirm('Reject this game request?')) {
+                                    try {
+                                      await apiFetch(`/api/admin/requests/${req.id}/reject`, { method: 'POST' });
+                                      setPendingRequests(prev => prev.filter(r => r.id !== req.id));
+                                    } catch (err) {
+                                      alert(err.message);
+                                    }
+                                  }
+                                }}
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -83,6 +83,18 @@ const GameSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
+const GameRequestSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
+  username: { type: String, required: true },
+  gameId: { type: String, required: true },
+  gameTitle: { type: String, required: true },
+  status: { type: String, default: 'pending' }, // pending, approved, rejected, timeout
+  code: { type: String, default: '' },
+  link: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
 export const User = mongoose.model('User', UserSchema);
 export const Machine = mongoose.model('Machine', MachineSchema);
 export const Transaction = mongoose.model('Transaction', TransactionSchema);
@@ -91,3 +103,4 @@ export const Package = mongoose.model('Package', PackageSchema);
 export const Settings = mongoose.model('Settings', SettingsSchema);
 export const Category = mongoose.model('Category', CategorySchema);
 export const Game = mongoose.model('Game', GameSchema);
+export const GameRequest = mongoose.model('GameRequest', GameRequestSchema);
