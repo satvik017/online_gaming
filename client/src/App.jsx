@@ -246,6 +246,9 @@ function App() {
   const [newPkgRecommended, setNewPkgRecommended] = useState(false);
   const [configDurationMinutes, setConfigDurationMinutes] = useState(15);
   const [configHomeBgUrl, setConfigHomeBgUrl] = useState('');
+  const [configHomeBgMobileUrl, setConfigHomeBgMobileUrl] = useState('');
+  const [configHomeBgDarkUrl, setConfigHomeBgDarkUrl] = useState('');
+  const [configHomeBgMobileDarkUrl, setConfigHomeBgMobileDarkUrl] = useState('');
   const [packageActionError, setPackageActionError] = useState('');
   const [settingsActionError, setSettingsActionError] = useState('');
 
@@ -343,6 +346,18 @@ function App() {
       if (data.sessionDurationMinutes) {
         setConfigDurationMinutes(data.sessionDurationMinutes);
       }
+      if (data.homeBackgroundImageUrl !== undefined) {
+        setConfigHomeBgUrl(data.homeBackgroundImageUrl);
+      }
+      if (data.homeBgMobileUrl !== undefined) {
+        setConfigHomeBgMobileUrl(data.homeBgMobileUrl);
+      }
+      if (data.homeBgDarkUrl !== undefined) {
+        setConfigHomeBgDarkUrl(data.homeBgDarkUrl);
+      }
+      if (data.homeBgMobileDarkUrl !== undefined) {
+        setConfigHomeBgMobileDarkUrl(data.homeBgMobileDarkUrl);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -384,6 +399,15 @@ function App() {
       }
       if (updatedSettings.homeBackgroundImageUrl !== undefined) {
         setConfigHomeBgUrl(updatedSettings.homeBackgroundImageUrl);
+      }
+      if (updatedSettings.homeBgMobileUrl !== undefined) {
+        setConfigHomeBgMobileUrl(updatedSettings.homeBgMobileUrl);
+      }
+      if (updatedSettings.homeBgDarkUrl !== undefined) {
+        setConfigHomeBgDarkUrl(updatedSettings.homeBgDarkUrl);
+      }
+      if (updatedSettings.homeBgMobileDarkUrl !== undefined) {
+        setConfigHomeBgMobileDarkUrl(updatedSettings.homeBgMobileDarkUrl);
       }
     });
 
@@ -1307,7 +1331,10 @@ function App() {
         method: 'PUT',
         body: JSON.stringify({ 
           sessionDurationMinutes: duration,
-          homeBackgroundImageUrl: configHomeBgUrl 
+          homeBackgroundImageUrl: configHomeBgUrl,
+          homeBgMobileUrl: configHomeBgMobileUrl,
+          homeBgDarkUrl: configHomeBgDarkUrl,
+          homeBgMobileDarkUrl: configHomeBgMobileDarkUrl 
         })
       });
 
@@ -1729,7 +1756,24 @@ function App() {
               padding: '3rem 2rem',
               borderRadius: '24px',
               overflow: 'hidden',
-              backgroundImage: systemSettings.homeBackgroundImageUrl ? `linear-gradient(to bottom, rgba(11,12,16,0.6), var(--bg-primary)), url("${systemSettings.homeBackgroundImageUrl}")` : 'none',
+              backgroundImage: (() => {
+          const isMobile = window.innerWidth <= 768;
+          let bgUrl = systemSettings.homeBackgroundImageUrl;
+          if (theme === 'dark' && isMobile && systemSettings.homeBgMobileDarkUrl) {
+            bgUrl = systemSettings.homeBgMobileDarkUrl;
+          } else if (theme === 'dark' && !isMobile && systemSettings.homeBgDarkUrl) {
+            bgUrl = systemSettings.homeBgDarkUrl;
+          } else if (theme === 'light' && isMobile && systemSettings.homeBgMobileUrl) {
+            bgUrl = systemSettings.homeBgMobileUrl;
+          } else if (theme === 'light' && !isMobile && systemSettings.homeBackgroundImageUrl) {
+            bgUrl = systemSettings.homeBackgroundImageUrl;
+          } else if (theme === 'dark' && systemSettings.homeBgDarkUrl) {
+            bgUrl = systemSettings.homeBgDarkUrl; // fallback dark
+          } else if (isMobile && systemSettings.homeBgMobileUrl) {
+            bgUrl = systemSettings.homeBgMobileUrl; // fallback mobile
+          }
+          return bgUrl ? `linear-gradient(to bottom, rgba(11,12,16,0.6), var(--bg-primary)), url("${bgUrl}")` : 'none';
+        })(),
               backgroundSize: '100% 100%',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
@@ -3492,14 +3536,20 @@ function App() {
                         </div>
 
                         <div className="form-group" style={{ marginTop: '1rem' }}>
-                          <label className="form-label">Home Background Image URL</label>
-                          <input 
-                            type="text" 
-                            className="form-input form-input-cyan" 
-                            placeholder="https://example.com/bg.jpg"
-                            value={configHomeBgUrl}
-                            onChange={(e) => setConfigHomeBgUrl(e.target.value)}
-                          />
+                          <label className="form-label">Desktop Background Image (Light Mode)</label>
+                          <input type="text" className="form-input form-input-cyan" placeholder="https://example.com/bg-desktop-light.jpg" value={configHomeBgUrl} onChange={(e) => setConfigHomeBgUrl(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                          <label className="form-label">Mobile Background Image (Light Mode)</label>
+                          <input type="text" className="form-input form-input-cyan" placeholder="https://example.com/bg-mobile-light.jpg" value={configHomeBgMobileUrl} onChange={(e) => setConfigHomeBgMobileUrl(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                          <label className="form-label">Desktop Background Image (Dark Mode)</label>
+                          <input type="text" className="form-input form-input-cyan" placeholder="https://example.com/bg-desktop-dark.jpg" value={configHomeBgDarkUrl} onChange={(e) => setConfigHomeBgDarkUrl(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                          <label className="form-label">Mobile Background Image (Dark Mode)</label>
+                          <input type="text" className="form-input form-input-cyan" placeholder="https://example.com/bg-mobile-dark.jpg" value={configHomeBgMobileDarkUrl} onChange={(e) => setConfigHomeBgMobileDarkUrl(e.target.value)} />
                         </div>
 
                         <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}>

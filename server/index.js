@@ -218,7 +218,7 @@ app.get('/api/settings', async (req, res) => {
 
 app.put('/api/settings', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { sessionDurationMinutes, homeBackgroundImageUrl } = req.body;
+    const { sessionDurationMinutes, homeBackgroundImageUrl, homeBgMobileUrl, homeBgDarkUrl, homeBgMobileDarkUrl } = req.body;
     const duration = parseInt(sessionDurationMinutes);
     if (!duration || duration <= 0) {
       return res.status(400).json({ error: 'Invalid session duration' });
@@ -226,6 +226,15 @@ app.put('/api/settings', authenticateToken, requireAdmin, async (req, res) => {
     const updatePayload = { sessionDurationMinutes: duration };
     if (homeBackgroundImageUrl !== undefined) {
       updatePayload.homeBackgroundImageUrl = homeBackgroundImageUrl;
+    }
+    if (homeBgMobileUrl !== undefined) {
+      updatePayload.homeBgMobileUrl = homeBgMobileUrl;
+    }
+    if (homeBgDarkUrl !== undefined) {
+      updatePayload.homeBgDarkUrl = homeBgDarkUrl;
+    }
+    if (homeBgMobileDarkUrl !== undefined) {
+      updatePayload.homeBgMobileDarkUrl = homeBgMobileDarkUrl;
     }
     const updated = await dbOps.updateSettings(updatePayload);
     io.emit('settings_update', updated);
