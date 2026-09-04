@@ -43,34 +43,19 @@ import {
   X,
   Info
 } from 'lucide-react';
-import { uploadGameCoverToSupabase, isSupabaseConfigured } from './supabase.js';
+import { uploadGameCoverToSupabase, isSupabaseConfigured } from './services/supabase.js';
 
 // Production Backend API & WebSockets URL (reads from VITE_BACKEND_URL env var, defaults to localhost:5050)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5050';
 
-// Deterministic Random Animal Avatar System for User Profile
-const ANIMAL_AVATARS = [
-  { emoji: '🦊', name: 'Cyber Fox', color: '#f97316' },
-  { emoji: '🦁', name: 'Alpha Lion', color: '#eab308' },
-  { emoji: '🐯', name: 'Neon Tiger', color: '#ea580c' },
-  { emoji: '🐼', name: 'Zen Panda', color: '#06b6d4' },
-  { emoji: '🐺', name: 'Shadow Wolf', color: '#6366f1' },
-  { emoji: '🦅', name: 'Sky Eagle', color: '#3b82f6' },
-  { emoji: '🐉', name: 'Storm Dragon', color: '#0284c7' },
-  { emoji: '🦄', name: 'Mystic Unicorn', color: '#ec4899' }
-];
-
-const getAnimalAvatar = (username) => {
-  if (!username) return ANIMAL_AVATARS[0];
-  let hash = 0;
-  for (let i = 0; i < username.length; i++) {
-    hash = username.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % ANIMAL_AVATARS.length;
-  return ANIMAL_AVATARS[index];
-};
+import { getAnimalAvatar } from './utils/avatars.js';
+import { useCustomization } from './context/CustomizationContext.jsx';
+import CustomizationSidebar from './components/CustomizationSidebar.jsx';
 
 function App() {
+  const { logo: customLogo } = useCustomization();
+  const displayLogo = customLogo || "https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png";
+
   // Dynamic Theme (light / dark)
   const [theme, setTheme] = useState(localStorage.getItem('vortex_theme') || 'light');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -1352,7 +1337,7 @@ function App() {
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => { setCurrentView(token ? 'lobby' : 'landing'); setMobileMenuOpen(false); }}>
             <img 
-              src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
+              src={displayLogo} 
               alt="VORTEX PLAY Logo" 
               style={{ height: '42px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.15))' }}
               className="hover-glitch"
@@ -1732,7 +1717,7 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ padding: '1rem', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.25)', borderRadius: '50%', boxShadow: '0 0 30px var(--accent-cyan-glow)' }}>
                   <img 
-                    src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
+                    src={displayLogo} 
                     alt="VORTEX PLAY Logo Emblem" 
                     style={{ width: '90px', height: '90px', objectFit: 'contain', filter: 'drop-shadow(0 4px 20px var(--accent-cyan-glow))' }} 
                   />
@@ -2012,7 +1997,7 @@ function App() {
             <div className="glass-panel" style={{ padding: '2.5rem', width: '100%', maxWidth: '420px', position: 'relative' }}>
               <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                 <img 
-                  src="https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png" 
+                  src={displayLogo} 
                   alt="VORTEX PLAY Logo" 
                   style={{ width: '56px', height: '56px', objectFit: 'contain', marginBottom: '1rem', filter: 'drop-shadow(0 2px 10px var(--accent-cyan-glow))' }} 
                 />
@@ -3729,6 +3714,8 @@ function App() {
           </div>
         </div>
       )}
+
+      <CustomizationSidebar />
 
       {/* Footer */}
       <footer style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', padding: '1.5rem', textAlign: 'center', background: 'rgba(0,0,0,0.2)' }}>
