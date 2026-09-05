@@ -353,6 +353,16 @@ app.post('/api/games/:id/play-request', authenticateToken, async (req, res) => {
   }
 });
 
+// Get User Requests
+app.get('/api/requests/me', authenticateToken, async (req, res) => {
+  try {
+    const requests = await dbOps.getUserGameRequests(req.user.id);
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Admin Get Requests
 app.get('/api/admin/requests', authenticateToken, requireAdmin, async (req, res) => {
   try {

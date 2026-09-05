@@ -53,6 +53,32 @@ import { getAnimalAvatar } from './utils/avatars.js';
 import { useCustomization } from './context/CustomizationContext.jsx';
 import CustomizationSidebar from './components/CustomizationSidebar.jsx';
 
+const RequestTimer = ({ createdAt }) => {
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const createdTime = new Date(createdAt).getTime();
+      const endTime = createdTime + 2 * 60 * 1000;
+      const now = new Date().getTime();
+      const diff = Math.floor((endTime - now) / 1000);
+      return diff > 0 ? diff : 0;
+    };
+
+    setTimeLeft(calculateTimeLeft());
+    const interval = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  if (timeLeft <= 0) return <span>0:00</span>;
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+  return <span>{mins}:{secs.toString().padStart(2, '0')}</span>;
+};
+
 function App() {
   const { logo: customLogo } = useCustomization();
   const displayLogo = customLogo || "https://oeqgmzhatgjmvphxrvkc.supabase.co/storage/v1/object/public/tomaan/logo_bg.png";
@@ -92,6 +118,7 @@ function App() {
   // Core Data State
   const [machines, setMachines] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [userRequests, setUserRequests] = useState([]);
   
   // Active Gaming Session State
   const [selectedMachine, setSelectedMachine] = useState(null);
@@ -438,6 +465,14 @@ function App() {
       setPendingRequests(prev => prev.map(r => r.id === req.id ? req : r).filter(r => r.status === 'pending'));
       setActiveGameRequest(prev => prev && prev.id === req.id ? req : prev);
       
+      setUserRequests(prev => {
+        const exists = prev.find(r => r.id === req.id);
+        if (exists) {
+          return prev.map(r => r.id === req.id ? req : r);
+        }
+        return [req, ...prev];
+      });
+      
       if (req.status === 'approved') {
         fetchCurrentUser(); // refresh tokens
       }
@@ -493,9 +528,26 @@ function App() {
     }
   };
 
+  const fetchUserRequests = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/requests/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserRequests(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     if (currentView === 'wallet' && token) {
       fetchTransactionHistory();
+    }
+    if (currentView === 'requests' && token) {
+      fetchUserRequests();
     }
   }, [currentView]);
 
@@ -1016,6 +1068,7 @@ function App() {
       });
 
       setActiveGameRequest(res);
+      setUserRequests(prev => [res, ...prev]);
       setRequestWaitTimer(120); // 2 minutes
       setCurrentView('waiting');
       
@@ -1409,6 +1462,14 @@ function App() {
                     <Coins size={16} />
                     Token Shop
                   </button>
+                  <button 
+                    onClick={() => setCurrentView('requests')} 
+                    className={`btn ${currentView === 'requests' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', gap: '0.4rem' }}
+                  >
+                    <History size={16} />
+                    History
+                  </button>
                   {user?.isAdmin && (
                     <button 
                       onClick={() => setCurrentView('admin')} 
@@ -1653,6 +1714,14 @@ function App() {
                   >
                     <Coins size={18} />
                     Vortex Key Shop
+                  </button>
+                  <button 
+                    onClick={() => { setCurrentView('requests'); setMobileMenuOpen(false); }}
+                    className="btn btn-secondary"
+                    style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                  >
+                    <History size={18} />
+                    Request History
                   </button>
 
                   {user?.isAdmin && (
@@ -2590,6 +2659,67 @@ function App() {
                 </div>
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* USER REQUESTS HISTORY */}
+        {currentView === 'requests' && (
+          <div className="animated-fade">
+            <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Request History</h2>
+            <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '12px' }}>
+              {userRequests.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)' }}>No game requests found.</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                      <th style={{ padding: '1rem' }}>Game</th>
+                      <th style={{ padding: '1rem' }}>Status</th>
+                      <th style={{ padding: '1rem' }}>Date</th>
+                      <th style={{ padding: '1rem' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userRequests.map(req => (
+                      <tr key={req.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '1rem', color: 'var(--text-primary)' }}>{req.gameTitle}</td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{ 
+                            padding: '0.3rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600,
+                            backgroundColor: req.status === 'approved' ? 'rgba(50, 255, 120, 0.1)' : req.status === 'rejected' ? 'rgba(255, 80, 80, 0.1)' : req.status === 'timeout' ? 'rgba(255, 200, 80, 0.1)' : 'rgba(80, 180, 255, 0.1)',
+                            color: req.status === 'approved' ? 'var(--status-success)' : req.status === 'rejected' ? 'var(--status-danger)' : req.status === 'timeout' ? '#ffc850' : 'var(--accent-cyan)'
+                          }}>
+                            {req.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{new Date(req.createdAt).toLocaleString()}</td>
+                        <td style={{ padding: '1rem' }}>
+                          {req.status === 'approved' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              {req.code && (
+                                <div style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '0.3rem 0.5rem', borderRadius: '4px', fontFamily: 'monospace', display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>Code:</span> <strong>{req.code}</strong>
+                                </div>
+                              )}
+                              {req.link && (
+                                <a href={req.link} target="_blank" rel="noreferrer" className="btn btn-cyan" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', textDecoration: 'none', textAlign: 'center' }}>
+                                  Play
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          {req.status === 'pending' && (
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                              Expires in: <strong style={{ color: 'var(--accent-cyan)' }}><RequestTimer createdAt={req.createdAt} /></strong>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         )}
