@@ -334,6 +334,25 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
+// Admin Get User Profile
+app.get('/api/admin/users/:id/profile', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const user = await dbOps.getUserById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const transactions = await dbOps.getTransactionsByUserId(req.params.id);
+    const requests = await dbOps.getUserGameRequests(req.params.id);
+    
+    res.json({
+      user: { id: user.id, username: user.username, tokenBalance: user.tokenBalance, isAdmin: user.isAdmin, createdAt: user.createdAt },
+      transactions,
+      requests
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Create Game Request
 app.post('/api/games/:id/play-request', authenticateToken, async (req, res) => {
   const gameId = req.params.id;
@@ -347,6 +366,19 @@ app.post('/api/games/:id/play-request', authenticateToken, async (req, res) => {
 
     const request = await dbOps.createGameRequest(req.user.id, req.user.username, game.id, game.title);
     io.emit('admin_game_request', request);
+    
+    setTimeout(async () => {
+      try {
+        const checkReq = await dbOps.getGameRequestById(request.id);
+        if (checkReq && checkReq.status === 'pending') {
+          const timeoutReq = await dbOps.updateGameRequest(request.id, 'timeout');
+          io.emit('game_request_status_update', timeoutReq);
+        }
+      } catch (err) {
+        console.error('Error auto-canceling request:', err);
+      }
+    }, 120 * 1000);
+
     res.json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });

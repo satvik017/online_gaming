@@ -52,6 +52,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5050';
 import { getAnimalAvatar } from './utils/avatars.js';
 import { useCustomization } from './context/CustomizationContext.jsx';
 import CustomizationSidebar from './components/CustomizationSidebar.jsx';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const RequestTimer = ({ createdAt }) => {
   const [timeLeft, setTimeLeft] = useState(0);
@@ -185,6 +186,8 @@ function App() {
   // Admin Sidebar & Users State
   const [adminTab, setAdminTab] = useState('overview'); // overview, games, nodes, pricing, sessions, players, requests
   const [adminUsersList, setAdminUsersList] = useState([]);
+  const [selectedAdminUserForProfile, setSelectedAdminUserForProfile] = useState(null);
+  const [adminUserProfileData, setAdminUserProfileData] = useState(null);
 
   // Admin selected items for CRUD operations
   const [selectedGameId, setSelectedGameId] = useState(null);
@@ -1409,6 +1412,16 @@ function App() {
     }
   };
 
+  const handleAdminUserClick = async (userId) => {
+    try {
+      const res = await apiFetch(`/api/admin/users/${userId}/profile`);
+      setAdminUserProfileData(res);
+      setSelectedAdminUserForProfile(userId);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   // Helper formatting for countdown
   const formatTime = (secs) => {
     const mins = Math.floor(secs / 60);
@@ -1456,8 +1469,16 @@ function App() {
                   </button>
                   <button 
                     onClick={() => setCurrentView('wallet')} 
-                    className={`btn ${currentView === 'wallet' ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', gap: '0.4rem' }}
+                    className="btn"
+                    style={{ 
+                      padding: '0.5rem 1rem', 
+                      fontSize: '0.85rem', 
+                      display: 'flex', 
+                      gap: '0.4rem',
+                      background: currentView === 'wallet' ? 'rgba(50, 255, 120, 0.1)' : 'transparent',
+                      color: 'var(--status-success)',
+                      border: `1px solid var(--status-success)`
+                    }}
                   >
                     <Coins size={16} />
                     Token Shop
@@ -1492,10 +1513,19 @@ function App() {
                     {/* Wallet Token Pill */}
                     <div 
                       onClick={() => setCurrentView('wallet')} 
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.2)', padding: '0.4rem 0.85rem', borderRadius: '20px', cursor: 'pointer' }}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.4rem', 
+                        background: currentView === 'wallet' ? 'rgba(50, 255, 120, 0.1)' : 'transparent', 
+                        border: '1px solid var(--status-success)', 
+                        padding: '0.4rem 0.85rem', 
+                        borderRadius: '20px', 
+                        cursor: 'pointer' 
+                      }}
                     >
-                      <Coins size={16} color="var(--accent-cyan)" />
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                      <Coins size={16} color="var(--status-success)" />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--status-success)', fontFamily: 'var(--font-mono)' }}>
                         {user.tokenBalance} Keys
                       </span>
                     </div>
@@ -1683,7 +1713,7 @@ function App() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>@{user.username}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--status-success)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
                     {user.tokenBalance} Keys Balance • {user.isAdmin ? 'Super Admin' : 'Pilot'}
                   </div>
                 </div>
@@ -1709,8 +1739,17 @@ function App() {
                 <>
                   <button 
                     onClick={() => { setCurrentView('wallet'); setMobileMenuOpen(false); }}
-                    className="btn btn-primary"
-                    style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
+                    className="btn"
+                    style={{ 
+                      width: '100%', 
+                      justifyContent: 'flex-start', 
+                      padding: '0.65rem 1rem', 
+                      fontSize: '0.85rem', 
+                      gap: '0.6rem',
+                      background: currentView === 'wallet' ? 'rgba(50, 255, 120, 0.1)' : 'transparent',
+                      color: 'var(--status-success)',
+                      border: `1px solid var(--status-success)`
+                    }}
                   >
                     <Coins size={18} />
                     Vortex Key Shop
@@ -2030,90 +2069,6 @@ function App() {
               </div>
             </div>
 
-            {/* WHY VORTEX PLAY - 4 FEATURE PILLARS */}
-            <div style={{ marginTop: '5rem', marginBottom: '5rem' }}>
-              <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-                <h3 style={{ fontSize: '2rem', color: 'var(--text-primary)', fontWeight: 800 }}>
-                  WHY PLAY ON VORTEX CLOUD?
-                </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-                  Enterprise cloud architecture built exclusively for console enthusiasts.
-                </p>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
-                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
-                  <Laptop size={36} color="var(--accent-cyan)" style={{ marginBottom: '1rem' }} />
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>Zero Download Storage</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    Never wait hours for 120GB game updates again. Games launch instantly from remote high-speed NVMe storage clusters.
-                  </p>
-                </div>
-
-                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
-                  <Tv size={36} color="var(--accent-cyan)" style={{ marginBottom: '1rem' }} />
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>PS5 & Xbox Exclusives</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    Connect to real physical PlayStation 5 and Xbox Series X console nodes directly from your web browser.
-                  </p>
-                </div>
-
-                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
-                  <Shield size={36} color="var(--status-success)" style={{ marginBottom: '1rem' }} />
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>MongoDB Atlas Sync</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    Your player statistics, save progress, and token keys balance are backed up to secure MongoDB Atlas cloud database.
-                  </p>
-                </div>
-
-                <div className="glass-panel" style={{ padding: '2rem', textAlign: 'left', borderRadius: '12px' }}>
-                  <Coins size={36} color="var(--accent-cyan)" style={{ marginBottom: '1rem' }} />
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>Pay-As-You-Play Keys</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    No expensive monthly subscriptions. Spend flexible token keys only when you are actively playing console games.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* HOW IT WORKS - 3 SIMPLE STEPS */}
-            <div className="glass-panel" style={{ padding: '3rem 2rem', borderRadius: '16px', marginTop: '4rem', marginBottom: '4rem', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '2rem', color: 'var(--text-primary)', fontWeight: 800, marginBottom: '2rem' }}>
-                HOW TO START STREAMING IN 30 SECONDS
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '2rem' }}>
-                <div style={{ padding: '1rem' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#fff', fontSize: '1.4rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
-                    1
-                  </div>
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Create Free Pilot Account</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sign up in seconds to receive starter token keys to unlock streaming nodes.</p>
-                </div>
-
-                <div style={{ padding: '1rem' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-cyan)', color: '#fff', fontSize: '1.4rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
-                    2
-                  </div>
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Select Console Game</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Pick your favorite title from PS5, Xbox, or PC liquid gaming catalog.</p>
-                </div>
-
-                <div style={{ padding: '1rem' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--status-success)', color: '#fff', fontSize: '1.4rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
-                    3
-                  </div>
-                  <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Play & Control Live Stream</h4>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Use keyboard (WASD) or plug in any USB gamepad controller to play instantly!</p>
-                </div>
-              </div>
-
-              <div style={{ marginTop: '2.5rem' }}>
-                <button onClick={() => setCurrentView(token ? 'lobby' : 'register')} className="btn btn-primary" style={{ padding: '0.85rem 2.5rem', fontSize: '1rem' }}>
-                  {token ? 'Go to Console Lobby' : 'Create Free Account Now'}
-                </button>
-              </div>
-            </div>
 
           </div>
         )}
@@ -2193,210 +2148,82 @@ function App() {
         {/* LOBBY / CATEGORY CARDS & GAMES CATALOG */}
         {currentView === 'lobby' && (
           <div className="animated-fade">
-            
-            {/* STAGE 1: CATEGORY CARDS VIEW (When no category is selected yet) */}
-            {selectedLobbyCategory === null ? (
-              <div>
-                {/* Header info */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <Gamepad2 size={28} color="var(--accent-cyan)" />
-                      Console Hardware Categories
-                    </h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                      Select a console category to browse hosted titles. Spending 1 Token Key launches your high-speed cloud stream.
-                    </p>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '0.6rem 1.2rem', borderRadius: '10px', textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Active Stations</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-success)', fontFamily: 'var(--font-mono)' }}>
-                        {activeMachines.filter(m => m.status === 'available').length} / {activeMachines.length} Ready
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
+                <Gamepad2 size={18} /> Console Hardware Categories
+              </div>
+              <h3 style={{ fontSize: '2.2rem', color: 'var(--text-primary)', fontWeight: 800 }}>
+                GAMES CATALOG
+              </h3>
 
-                {/* Category Cards Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '1.75rem', marginBottom: '3rem' }}>
-                  {activeCategories.map((cat) => {
-                    const catGames = activeGames.filter(g => g.categoryId === cat.type);
-                    const matchingMachines = activeMachines.filter(m => m.type === cat.type || (cat.type === 'ps4' && m.type === 'ps5'));
-                    const availableMachines = matchingMachines.filter(m => m.status === 'available').length;
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem', width: '100%' }}>
+              {activeCategories.map((cat) => {
+                const catGames = activeGames.filter(g => g.categoryId === cat.type);
+                if (catGames.length === 0) return null;
+                
+                return (
+                  <div key={cat.id} style={{ textAlign: 'left' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--accent-cyan)' }}>
+                      <h4 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', margin: 0 }}>
+                        {cat.name} Games
+                      </h4>
+                    </div>
                     
-                    const themeColor = cat.type === 'ps5' ? 'var(--accent-cyan)' : cat.type === 'ps4' ? 'var(--accent-cyan)' : cat.type === 'xbox' ? '#107C10' : 'var(--accent-cyan)';
-                    const CategoryIcon = cat.type === 'xbox' ? Monitor : cat.type === 'pc' ? Laptop : Tv;
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+                      {catGames.map((game) => (
+                        <div 
+                          key={game.id} 
+                          onClick={() => setGameDetailModal(game)}
+                          className="glass-panel cyan-hover" 
+                          style={{ 
+                            borderRadius: '14px', 
+                            overflow: 'hidden', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            cursor: 'pointer',
+                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                            border: '1px solid var(--border-color)'
+                          }}
+                        >
+                          {/* Cover Image Container */}
+                          <div style={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: '#0b0c10' }}>
+                            <img 
+                              src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
+                              alt={game.title} 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
+                              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            />
+                            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95) 0%, transparent 60%)' }} />
 
-                    return (
-                      <div 
-                        key={cat.id} 
-                        onClick={() => setSelectedLobbyCategory(cat.type)}
-                        className="glass-panel" 
-                        style={{ 
-                          padding: '1.75rem', 
-                          borderRadius: '16px', 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          cursor: 'pointer',
-                          position: 'relative',
-                          border: `1px solid var(--border-color)`,
-                          transition: 'transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-4px)';
-                          e.currentTarget.style.borderColor = themeColor;
-                          e.currentTarget.style.boxShadow = `0 10px 25px rgba(0, 0, 0, 0.15)`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.borderColor = 'var(--border-color)';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }}
-                      >
-                        {/* Top Category Icon & Station Pill */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                          <div style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '12px', border: `1px solid ${themeColor}` }}>
-                            <CategoryIcon size={32} color={themeColor} />
+                            {/* Category Badge Pill */}
+                            <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', border: '1px solid var(--accent-cyan)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                              <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                                {game.categoryId?.toUpperCase() || 'CONSOLE'}
+                              </span>
+                            </div>
+
+                            {/* Details Hint Badge */}
+                            <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#fff' }}>
+                              <Info size={12} color="var(--accent-cyan)" /> Details & Play
+                            </div>
                           </div>
-                          
-                          <div style={{ background: availableMachines > 0 ? 'rgba(0, 255, 170, 0.1)' : 'rgba(255, 170, 0, 0.1)', border: availableMachines > 0 ? '1px solid var(--status-success)' : '1px solid var(--status-warning)', padding: '0.25rem 0.6rem', borderRadius: '20px', fontSize: '0.7rem', color: availableMachines > 0 ? 'var(--status-success)' : 'var(--status-warning)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                            {availableMachines > 0 ? `${availableMachines} Stations Online` : 'Stations Busy'}
+
+                          {/* Game Title Bar */}
+                          <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {game.title}
+                            </h4>
                           </div>
                         </div>
-
-                        {/* Title & Description */}
-                        <h4 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-                          {cat.name}
-                        </h4>
-                        
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1.5rem', flex: 1 }}>
-                          {cat.desc || `Browse hosted games for ${cat.name} hardware node cluster.`}
-                        </p>
-
-                        {/* Card Footer */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                            {catGames.length} Game Title{catGames.length !== 1 ? 's' : ''}
-                          </span>
-
-                          <button 
-                            className="btn btn-cyan" 
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', gap: '0.4rem' }}
-                          >
-                            Explore Games <ArrowRight size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-
-              /* STAGE 2: SELECTED CATEGORY GAMES CATALOG VIEW */
-              <div>
-                {/* Top Bar with Back Button & Selected Category Title */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button 
-                      onClick={() => setSelectedLobbyCategory(null)} 
-                      className="btn btn-secondary" 
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', gap: '0.4rem' }}
-                    >
-                      ← Back to Categories
-                    </button>
-                    <div>
-                      <h3 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                        {selectedLobbyCategory === 'ps5' ? <Tv size={26} color="var(--accent-cyan)" /> : selectedLobbyCategory === 'ps4' ? <Tv size={26} color="var(--accent-cyan)" /> : selectedLobbyCategory === 'xbox' ? <Monitor size={26} color="#107C10" /> : <Laptop size={26} color="var(--accent-cyan)" />}
-                        {categories.find(c => c.type === selectedLobbyCategory)?.name || selectedLobbyCategory.toUpperCase()} Games
-                      </h3>
-                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                        Showing games hosted on {selectedLobbyCategory.toUpperCase()} console stations.
-                      </p>
+                      ))}
                     </div>
                   </div>
-
-                  {/* Category Switcher Pills */}
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {activeCategories.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => setSelectedLobbyCategory(c.type)}
-                        className={`btn ${selectedLobbyCategory === c.type ? 'btn-cyan' : 'btn-secondary'}`}
-                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem' }}
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Games Grid for Selected Category */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1.5rem' }}>
-                  {activeGames.filter(g => g.categoryId === selectedLobbyCategory).length === 0 ? (
-                    <div className="glass-panel" style={{ padding: '3rem', gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>No games published under {activeCategories.find(c => c.type === selectedLobbyCategory)?.name} yet.</p>
-                      <button onClick={() => setSelectedLobbyCategory(null)} className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}>
-                        Select Another Category
-                      </button>
-                    </div>
-                  ) : (
-                    activeGames.filter(g => g.categoryId === selectedLobbyCategory).map((game) => (
-                      <div 
-                        key={game.id} 
-                        onClick={() => setGameDetailModal(game)}
-                        className="glass-panel cyan-hover" 
-                        style={{ 
-                          borderRadius: '14px',
-                          overflow: 'hidden',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          cursor: 'pointer',
-                          border: '1px solid var(--border-color)',
-                          transition: 'transform 0.3s ease, box-shadow 0.3s ease'
-                        }}
-                      >
-                        {/* Cover Image Header */}
-                        <div style={{ height: '230px', width: '100%', position: 'relative', overflow: 'hidden', background: '#0b0c10' }}>
-                          <img 
-                            src={game.coverUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80'} 
-                            alt={game.title}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease' }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                          />
-                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(11, 12, 16, 0.95) 0%, transparent 60%)' }} />
-                          
-                          {/* Category Badge Pill */}
-                          <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <Tv size={12} color="var(--accent-cyan)" />
-                            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: '#fff' }}>
-                              {game.categoryId.toUpperCase()}
-                            </span>
-                          </div>
-
-                          {/* Details hint badge */}
-                          <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)', padding: '0.25rem 0.6rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', color: '#fff' }}>
-                            <Info size={12} color="var(--accent-cyan)" /> Details & Play
-                          </div>
-                        </div>
-
-                        {/* Game Title Bar */}
-                        <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <h4 style={{ color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {game.title}
-                          </h4>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-            )}
-
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -3768,29 +3595,181 @@ function App() {
               {/* TAB 6: REGISTERED PLAYERS */}
               {adminTab === 'players' && (
                 <div className="animated-fade">
-                  <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Users size={22} color="var(--accent-cyan)" /> Registered Player Accounts ({adminUsersList.length})
-                  </h3>
-
-                  <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
-                      {adminUsersList.map((usr) => (
-                        <div key={usr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                          <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              @{usr.username} {usr.isAdmin && <span style={{ background: 'var(--accent-cyan)', fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', color: '#fff' }}>ADMIN</span>}
+                  {selectedAdminUserForProfile ? (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', gap: '1rem' }}>
+                        <button 
+                          className="btn btn-secondary" 
+                          onClick={() => { setSelectedAdminUserForProfile(null); setAdminUserProfileData(null); }}
+                        >
+                          ← Back to Players
+                        </button>
+                        <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', margin: 0 }}>
+                          Player Profile Dashboard
+                        </h3>
+                      </div>
+                      
+                      {!adminUserProfileData ? (
+                        <p style={{ color: 'var(--text-muted)' }}>Loading profile data...</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                          <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <h4 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', margin: 0 }}>@{adminUserProfileData.user.username}</h4>
+                              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0.2rem 0 0 0' }}>Joined: {new Date(adminUserProfileData.user.createdAt).toLocaleDateString()}</p>
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                              ID: {usr.id} | Joined: {new Date(usr.createdAt).toLocaleDateString()}
+                            <div style={{ background: 'rgba(0, 243, 255, 0.1)', border: '1px solid var(--accent-cyan)', padding: '0.5rem 1rem', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>
+                              <Coins size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.4rem' }} />
+                              {adminUserProfileData.user.tokenBalance} Keys Balance
                             </div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
-                            <Coins size={16} /> {usr.tokenBalance} Keys
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                            {/* Transactions Chart */}
+                            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                              <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Token Purchases History</h4>
+                              {adminUserProfileData.transactions.filter(t => t.type === 'purchase').length > 0 ? (
+                                <>
+                                  <div style={{ width: '100%', height: '300px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <BarChart data={adminUserProfileData.transactions.filter(t => t.type === 'purchase').map(t => ({ ...t, amount: parseInt(t.amount) }))}>
+                                        <XAxis dataKey="createdAt" tickFormatter={(val) => new Date(val).toLocaleDateString()} stroke="var(--text-muted)" fontSize={12} />
+                                        <YAxis stroke="var(--text-muted)" fontSize={12} />
+                                        <Tooltip contentStyle={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }} />
+                                        <Bar dataKey="amount" fill="var(--accent-cyan)" radius={[4, 4, 0, 0]} name="Tokens Bought" />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                  <div style={{ marginTop: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
+                                    <table style={{ width: '100%', textAlign: 'left', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
+                                      <thead>
+                                        <tr style={{ color: 'var(--text-muted)' }}>
+                                          <th style={{ paddingBottom: '0.5rem' }}>Date</th>
+                                          <th style={{ paddingBottom: '0.5rem' }}>Amount</th>
+                                          <th style={{ paddingBottom: '0.5rem' }}>Cost</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {adminUserProfileData.transactions.filter(t => t.type === 'purchase').map(t => (
+                                          <tr key={t.id} style={{ borderTop: '1px solid var(--border-color)' }}>
+                                            <td style={{ padding: '0.75rem 0', color: 'var(--text-secondary)' }}>{new Date(t.createdAt).toLocaleDateString()}</td>
+                                            <td style={{ padding: '0.75rem 0', color: 'var(--accent-cyan)' }}>+{t.amount} Keys</td>
+                                            <td style={{ padding: '0.75rem 0', color: 'var(--status-success)' }}>${t.cost.toFixed(2)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </>
+                              ) : (
+                                <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>No purchase transactions found.</p>
+                              )}
+                            </div>
+
+                            {/* Requests Chart */}
+                            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                              <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Game Requests Overview</h4>
+                              {adminUserProfileData.requests.length > 0 ? (
+                                <>
+                                  <div style={{ width: '100%', height: '300px' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <PieChart>
+                                        <Pie
+                                          data={[
+                                            { name: 'Approved', value: adminUserProfileData.requests.filter(r => r.status === 'approved').length, color: '#00ffaa' },
+                                            { name: 'Pending', value: adminUserProfileData.requests.filter(r => r.status === 'pending').length, color: '#ffaa00' },
+                                            { name: 'Rejected', value: adminUserProfileData.requests.filter(r => r.status === 'rejected').length, color: '#ff4d4d' },
+                                            { name: 'Timeout', value: adminUserProfileData.requests.filter(r => r.status === 'timeout').length, color: '#888' }
+                                          ].filter(d => d.value > 0)}
+                                          cx="50%"
+                                          cy="50%"
+                                          innerRadius={60}
+                                          outerRadius={90}
+                                          dataKey="value"
+                                        >
+                                          {([
+                                            { name: 'Approved', value: adminUserProfileData.requests.filter(r => r.status === 'approved').length, color: '#00ffaa' },
+                                            { name: 'Pending', value: adminUserProfileData.requests.filter(r => r.status === 'pending').length, color: '#ffaa00' },
+                                            { name: 'Rejected', value: adminUserProfileData.requests.filter(r => r.status === 'rejected').length, color: '#ff4d4d' },
+                                            { name: 'Timeout', value: adminUserProfileData.requests.filter(r => r.status === 'timeout').length, color: '#888' }
+                                          ].filter(d => d.value > 0)).map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                          ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }} />
+                                        <Legend />
+                                      </PieChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                  <div style={{ marginTop: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
+                                    <table style={{ width: '100%', textAlign: 'left', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
+                                      <thead>
+                                        <tr style={{ color: 'var(--text-muted)' }}>
+                                          <th style={{ paddingBottom: '0.5rem' }}>Date</th>
+                                          <th style={{ paddingBottom: '0.5rem' }}>Game</th>
+                                          <th style={{ paddingBottom: '0.5rem' }}>Status</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {adminUserProfileData.requests.map(r => (
+                                          <tr key={r.id} style={{ borderTop: '1px solid var(--border-color)' }}>
+                                            <td style={{ padding: '0.75rem 0', color: 'var(--text-secondary)' }}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                                            <td style={{ padding: '0.75rem 0', color: 'var(--text-primary)' }}>{r.gameTitle}</td>
+                                            <td style={{ padding: '0.75rem 0' }}>
+                                              <span style={{ 
+                                                color: r.status === 'approved' ? 'var(--status-success)' : r.status === 'pending' ? 'var(--status-warning)' : r.status === 'rejected' ? 'var(--status-danger)' : '#888',
+                                                background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold'
+                                              }}>
+                                                {r.status.toUpperCase()}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </>
+                              ) : (
+                                <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>No game requests found.</p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <h3 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Users size={22} color="var(--accent-cyan)" /> Registered Player Accounts ({adminUsersList.length})
+                      </h3>
+
+                      <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
+                          {adminUsersList.map((usr) => (
+                            <div 
+                              key={usr.id} 
+                              onClick={() => handleAdminUserClick(usr.id)}
+                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--bg-tertiary)', borderRadius: '6px', border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'transform 0.2s, border-color 0.2s' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                            >
+                              <div>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  @{usr.username} {usr.isAdmin && <span style={{ background: 'var(--accent-cyan)', fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', color: '#fff' }}>ADMIN</span>}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                                  ID: {usr.id} | Joined: {new Date(usr.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                                <Coins size={16} /> {usr.tokenBalance} Keys
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

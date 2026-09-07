@@ -357,6 +357,9 @@ export const dbOps = {
   getUserGameRequests: async (userId) => {
     return await GameRequest.find({ userId }).sort({ createdAt: -1 }).lean();
   },
+  getGameRequestById: async (id) => {
+    return await GameRequest.findOne({ id }).lean();
+  },
   updateGameRequest: async (id, status, code = '', link = '') => {
     const req = await GameRequest.findOne({ id });
     if (!req) throw new Error('Game Request not found');
