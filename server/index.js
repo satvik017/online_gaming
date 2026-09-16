@@ -1,5 +1,13 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from server directory and root directory
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 import express from 'express';
 import http from 'http';
@@ -24,26 +32,71 @@ const io = new Server(server, {
   }
 });
 
-// Middleware: Authenticate JWT
+// Middleware: Authenticate JWT with real-time fresh user profile & permissions
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) return res.status(401).json({ error: 'Access token missing' });
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) return res.status(403).json({ error: 'Invalid or expired token' });
-    req.user = user;
-    next();
+    try {
+      const freshUser = await dbOps.getUserById(decoded.id);
+      if (freshUser) {
+        req.user = {
+          id: freshUser.id,
+          username: freshUser.username,
+          isAdmin: freshUser.isAdmin,
+          permissions: freshUser.permissions || {},
+          tokenBalance: freshUser.tokenBalance
+        };
+      } else {
+        req.user = decoded;
+      }
+      next();
+    } catch (e) {
+      req.user = decoded;
+      next();
+    }
   });
 };
 
-// Middleware: Admin Only check
+// Middleware: General Admin Access check (Super Admin OR any granted admin tab permission)
 const requireAdmin = (req, res, next) => {
-  if (!req.user || !req.user.isAdmin) {
-    return res.status(403).json({ error: 'Admin privileges required' });
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
-  next();
+  if (req.user.isAdmin) {
+    return next();
+  }
+  const perms = req.user.permissions || {};
+  const hasAnyAdminAccess = Object.values(perms).some(tab => 
+    tab && (tab.view || tab.insert || tab.update || tab.delete)
+  );
+  if (hasAnyAdminAccess) {
+    return next();
+  }
+  return res.status(403).json({ error: 'Admin privileges required' });
+};
+
+// Middleware: Granular Tab & Action Permission check
+const requirePermission = (tab, action = 'view') => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (req.user.isAdmin) {
+      return next(); // Super Admin always bypasses
+    }
+    const tabPerms = req.user.permissions?.[tab] || {};
+    if (tabPerms[action] === true) {
+      return next();
+    }
+    return res.status(403).json({ 
+      error: `Access Denied: You do not have '${action}' permission for the '${tab}' section.` 
+    });
+  };
 };
 
 // --- HEALTH CHECK ROUTE ---
@@ -75,7 +128,7 @@ app.post('/api/auth/register', async (req, res) => {
     );
     res.status(201).json({
       token,
-      user: { id: user.id, username: user.username, isAdmin: user.isAdmin, tokenBalance: user.tokenBalance }
+      user: { id: user.id, username: user.username, isAdmin: user.isAdmin, permissions: user.permissions || {}, tokenBalance: user.tokenBalance }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -106,7 +159,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, username: user.username, isAdmin: user.isAdmin, tokenBalance: user.tokenBalance }
+      user: { id: user.id, username: user.username, isAdmin: user.isAdmin, permissions: user.permissions || {}, tokenBalance: user.tokenBalance }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -121,6 +174,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
       id: user.id,
       username: user.username,
       isAdmin: user.isAdmin,
+      permissions: user.permissions || {},
       tokenBalance: user.tokenBalance
     });
   } catch (error) {
@@ -175,7 +229,7 @@ app.get('/api/packages', async (req, res) => {
   }
 });
 
-app.post('/api/packages', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/packages', authenticateToken, requirePermission('pricing', 'insert'), async (req, res) => {
   try {
     const pkg = await dbOps.createPackage(req.body);
     io.emit('packages_update', await dbOps.getPackages());
@@ -185,7 +239,7 @@ app.post('/api/packages', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-app.put('/api/packages/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/packages/:id', authenticateToken, requirePermission('pricing', 'update'), async (req, res) => {
   try {
     const updated = await dbOps.updatePackage(req.params.id, req.body);
     io.emit('packages_update', await dbOps.getPackages());
@@ -195,7 +249,7 @@ app.put('/api/packages/:id', authenticateToken, requireAdmin, async (req, res) =
   }
 });
 
-app.delete('/api/packages/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.delete('/api/packages/:id', authenticateToken, requirePermission('pricing', 'delete'), async (req, res) => {
   try {
     await dbOps.deletePackage(req.params.id);
     io.emit('packages_update', await dbOps.getPackages());
@@ -216,7 +270,7 @@ app.get('/api/settings', async (req, res) => {
   }
 });
 
-app.put('/api/settings', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/settings', authenticateToken, requirePermission('pricing', 'update'), async (req, res) => {
   try {
     const { sessionDurationMinutes, homeBackgroundImageUrl, homeBgMobileUrl, homeBgDarkUrl, homeBgMobileDarkUrl } = req.body;
     const duration = parseInt(sessionDurationMinutes);
@@ -255,7 +309,7 @@ app.get('/api/categories', async (req, res) => {
   }
 });
 
-app.post('/api/categories', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/categories', authenticateToken, requirePermission('nodes', 'insert'), async (req, res) => {
   try {
     const category = await dbOps.createCategory(req.body);
     io.emit('categories_update', await dbOps.getCategories());
@@ -265,7 +319,7 @@ app.post('/api/categories', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
-app.put('/api/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/categories/:id', authenticateToken, requirePermission('nodes', 'update'), async (req, res) => {
   try {
     const updated = await dbOps.updateCategory(req.params.id, req.body);
     io.emit('categories_update', await dbOps.getCategories());
@@ -275,7 +329,7 @@ app.put('/api/categories/:id', authenticateToken, requireAdmin, async (req, res)
   }
 });
 
-app.delete('/api/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.delete('/api/categories/:id', authenticateToken, requirePermission('nodes', 'delete'), async (req, res) => {
   try {
     await dbOps.deleteCategory(req.params.id);
     io.emit('categories_update', await dbOps.getCategories());
@@ -294,7 +348,7 @@ app.get('/api/games', async (req, res) => {
   }
 });
 
-app.post('/api/games', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/games', authenticateToken, requirePermission('games', 'insert'), async (req, res) => {
   try {
     const game = await dbOps.createGame(req.body);
     io.emit('games_update', await dbOps.getGames());
@@ -304,7 +358,7 @@ app.post('/api/games', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-app.put('/api/games/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/games/:id', authenticateToken, requirePermission('games', 'update'), async (req, res) => {
   try {
     const updated = await dbOps.updateGame(req.params.id, req.body);
     io.emit('games_update', await dbOps.getGames());
@@ -314,7 +368,7 @@ app.put('/api/games/:id', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/games/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.delete('/api/games/:id', authenticateToken, requirePermission('games', 'delete'), async (req, res) => {
   try {
     await dbOps.deleteGame(req.params.id);
     io.emit('games_update', await dbOps.getGames());
@@ -325,7 +379,7 @@ app.delete('/api/games/:id', authenticateToken, requireAdmin, async (req, res) =
 });
 
 // Admin Users List Route
-app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/admin/users', authenticateToken, requirePermission('players', 'view'), async (req, res) => {
   try {
     const users = await dbOps.getUsersList();
     res.json(users);
@@ -334,8 +388,8 @@ app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
-// Admin Get User Profile
-app.get('/api/admin/users/:id/profile', authenticateToken, requireAdmin, async (req, res) => {
+// Admin Get User Profile (Includes Permissions)
+app.get('/api/admin/users/:id/profile', authenticateToken, requirePermission('players', 'view'), async (req, res) => {
   try {
     const user = await dbOps.getUserById(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -344,9 +398,48 @@ app.get('/api/admin/users/:id/profile', authenticateToken, requireAdmin, async (
     const requests = await dbOps.getUserGameRequests(req.params.id);
     
     res.json({
-      user: { id: user.id, username: user.username, tokenBalance: user.tokenBalance, isAdmin: user.isAdmin, createdAt: user.createdAt },
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        tokenBalance: user.tokenBalance, 
+        isAdmin: Boolean(user.isAdmin), 
+        permissions: user.permissions || {},
+        createdAt: user.createdAt 
+      },
       transactions,
       requests
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin Update User Tab Permissions & Role
+app.put('/api/admin/users/:id/permissions', authenticateToken, async (req, res) => {
+  try {
+    // Only super admins or users with players.update permission can edit user permissions
+    if (!req.user.isAdmin && !req.user.permissions?.players?.update) {
+      return res.status(403).json({ error: 'Super Admin or Player Management privileges required to edit permissions' });
+    }
+
+    const { permissions, isAdmin } = req.body;
+    const updated = await dbOps.updateUserPermissions(req.params.id, permissions, isAdmin);
+
+    io.emit('user_permissions_updated', {
+      userId: updated.id,
+      permissions: updated.permissions || {},
+      isAdmin: updated.isAdmin
+    });
+
+    res.json({
+      message: 'User permissions updated successfully',
+      user: {
+        id: updated.id,
+        username: updated.username,
+        isAdmin: updated.isAdmin,
+        permissions: updated.permissions || {},
+        tokenBalance: updated.tokenBalance
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -396,7 +489,7 @@ app.get('/api/requests/me', authenticateToken, async (req, res) => {
 });
 
 // Admin Get Requests
-app.get('/api/admin/requests', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/admin/requests', authenticateToken, requirePermission('requests', 'view'), async (req, res) => {
   try {
     const requests = await dbOps.getPendingGameRequests();
     res.json(requests);
@@ -406,7 +499,7 @@ app.get('/api/admin/requests', authenticateToken, requireAdmin, async (req, res)
 });
 
 // Admin Approve Request
-app.post('/api/admin/requests/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/admin/requests/:id/approve', authenticateToken, requirePermission('requests', 'update'), async (req, res) => {
   const { code, link } = req.body;
   if (!code || !link) return res.status(400).json({ error: 'Code and link are required' });
 
@@ -428,7 +521,7 @@ app.post('/api/admin/requests/:id/approve', authenticateToken, requireAdmin, asy
 });
 
 // Admin Reject Request
-app.post('/api/admin/requests/:id/reject', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/admin/requests/:id/reject', authenticateToken, requirePermission('requests', 'update'), async (req, res) => {
   try {
     const request = await dbOps.updateGameRequest(req.params.id, 'rejected');
     io.emit('game_request_status_update', request);
@@ -511,7 +604,7 @@ app.get('/api/machines', async (req, res) => {
 });
 
 // Create Machine (Admin)
-app.post('/api/machines', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/machines', authenticateToken, requirePermission('stations', 'insert'), async (req, res) => {
   const { name, type, ipAddress, activeGame, tokenCostPerSession, cpuSpec, gpuSpec, ramSpec, resolutionSpec, regionTag } = req.body;
   if (!name) return res.status(400).json({ error: 'Machine name is required' });
 
@@ -537,7 +630,7 @@ app.post('/api/machines', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Edit Machine (Admin)
-app.put('/api/machines/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.put('/api/machines/:id', authenticateToken, requirePermission('stations', 'update'), async (req, res) => {
   try {
     const updated = await dbOps.updateMachine(req.params.id, req.body);
     io.emit('machines_update', await dbOps.getMachines());
@@ -548,7 +641,7 @@ app.put('/api/machines/:id', authenticateToken, requireAdmin, async (req, res) =
 });
 
 // Delete Machine (Admin)
-app.delete('/api/machines/:id', authenticateToken, requireAdmin, async (req, res) => {
+app.delete('/api/machines/:id', authenticateToken, requirePermission('stations', 'delete'), async (req, res) => {
   try {
     const activeSess = await dbOps.getActiveSessionByMachine(req.params.id);
     if (activeSess) {
@@ -565,7 +658,7 @@ app.delete('/api/machines/:id', authenticateToken, requireAdmin, async (req, res
 
 // --- ADMIN CONTROL & STATS ---
 
-app.get('/api/admin/sessions', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/admin/sessions', authenticateToken, requirePermission('sessions', 'view'), async (req, res) => {
   try {
     const allSessions = await dbOps.getSessions();
     const sessions = allSessions.filter(s => s.status === 'active');
@@ -585,7 +678,7 @@ app.get('/api/admin/sessions', authenticateToken, requireAdmin, async (req, res)
   }
 });
 
-app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
+app.get('/api/admin/stats', authenticateToken, requirePermission('overview', 'view'), async (req, res) => {
   try {
     const users = await dbOps.getUsers();
     const txs = await dbOps.getTransactions();
@@ -608,7 +701,7 @@ app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) =>
 });
 
 // Force End Session Route (Admin)
-app.post('/api/admin/sessions/:id/terminate', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/admin/sessions/:id/terminate', authenticateToken, requirePermission('sessions', 'update'), async (req, res) => {
   try {
     const ended = await endSessionInternal(req.params.id, 'Terminated by Administrator');
     if (ended) {

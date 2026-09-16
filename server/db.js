@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
   isAdmin: { type: Boolean, default: false },
+  permissions: { type: mongoose.Schema.Types.Mixed, default: {} },
   tokenBalance: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
@@ -131,16 +132,17 @@ export const GameRequest = mongoose.model('GameRequest', GameRequestSchema);
 // Helper to generate IDs
 const generateId = (prefix) => `${prefix}_${Math.random().toString(36).substr(2, 9)}`;
 
-// --- DATABASE CONNECTION & SEEDING ---
+const ATLAS_FALLBACK_URI = 'mongodb+srv://satviksharma2711_db_user:q8wDQGN1DSdIjbj6@satvikg.vraogkp.mongodb.net/vortex_gaming?retryWrites=true&w=majority';
 
 export const connectDB = async (uri) => {
-  const mongoUri = uri || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/vortex_gaming';
+  const mongoUri = uri || process.env.MONGODB_URI || ATLAS_FALLBACK_URI;
   try {
-    await mongoose.connect(mongoUri);
-    console.log('Successfully connected to MongoDB Atlas database.');
+    const conn = await mongoose.connect(mongoUri);
+    const isAtlas = mongoUri.includes('mongodb+srv') || mongoUri.includes('mongodb.net');
+    console.log(`Successfully connected to ${isAtlas ? 'LIVE MongoDB Atlas' : 'LOCAL MongoDB'} [Host: ${conn.connection.host}, Database: ${conn.connection.name}]`);
     await seedDb();
   } catch (err) {
-    console.error('Failed to connect to MongoDB Atlas:', err);
+    console.error('Failed to connect to MongoDB:', err);
     throw err;
   }
 };
@@ -492,7 +494,9 @@ export const dbOps = {
   },
 
   getUserById: async (id) => {
-    return await User.findOne({ id }).lean();
+    if (!id) return null;
+    const query = mongoose.isValidObjectId(id) ? { $or: [{ id }, { _id: id }] } : { id };
+    return await User.findOne(query).lean();
   },
 
   getUserByUsername: async (username) => {
@@ -518,11 +522,25 @@ export const dbOps = {
   },
 
   updateUserTokens: async (userId, amount) => {
-    const user = await User.findOne({ id: userId });
+    if (!userId) throw new Error('User ID is required');
+    const query = mongoose.isValidObjectId(userId) ? { $or: [{ id: userId }, { _id: userId }] } : { id: userId };
+    const user = await User.findOne(query);
     if (!user) throw new Error('User not found');
 
     const newBalance = Math.max(0, user.tokenBalance + amount);
     user.tokenBalance = newBalance;
+    await user.save();
+    return user.toObject();
+  },
+
+  updateUserPermissions: async (userId, permissions, isAdmin) => {
+    if (!userId) throw new Error('User ID is required');
+    const query = mongoose.isValidObjectId(userId) ? { $or: [{ id: userId }, { _id: userId }] } : { id: userId };
+    const user = await User.findOne(query);
+    if (!user) throw new Error('User not found');
+    if (permissions !== undefined) user.permissions = permissions;
+    if (isAdmin !== undefined) user.isAdmin = Boolean(isAdmin);
+    user.markModified('permissions');
     await user.save();
     return user.toObject();
   },
