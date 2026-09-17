@@ -42,7 +42,10 @@ import {
   Menu,
   X,
   Info,
-  Copy
+  Copy,
+  Check,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { uploadGameCoverToSupabase, isSupabaseConfigured } from './services/supabase.js';
 
@@ -53,6 +56,21 @@ import { getAnimalAvatar } from './utils/avatars.js';
 import { useCustomization } from './context/CustomizationContext.jsx';
 import CustomizationSidebar from './components/CustomizationSidebar.jsx';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+
+// --- RBAC ADMIN TABS DEFINITIONS & HELPERS ---
+export const ADMIN_TABS = [
+  { id: 'overview', label: 'Overview Analytics', icon: LayoutDashboard, desc: 'High-level platform revenue, usage analytics, and station health', ops: ['view'] },
+  { id: 'games', label: 'Games Catalog', icon: Gamepad2, desc: 'Playable cloud titles, cover artwork, platforms, and token rates', ops: ['view', 'insert', 'update', 'delete'] },
+  { id: 'nodes', label: 'Machine Categories', icon: Layers, desc: 'Gaming clusters (PS5, PS4, Xbox, PC) and node configurations', ops: ['view', 'insert', 'update', 'delete'] },
+  { id: 'stations', label: 'Hardware Stations', icon: Cpu, desc: 'Physical station machines, IP routing, hardware specs, and status', ops: ['view', 'insert', 'update', 'delete'] },
+  { id: 'pricing', label: 'Pricing & Token Rates', icon: Coins, desc: 'Token purchase bundles, pricing rates, and global session durations', ops: ['view', 'insert', 'update', 'delete'] },
+  { id: 'sessions', label: 'Live Streams', icon: Activity, desc: 'Active console streams, user sessions, and force termination control', ops: ['view', 'update', 'delete'] },
+  { id: 'players', label: 'Registered Players', icon: Users, desc: 'User directories, player token wallets, and RBAC tab permissions', ops: ['view', 'update'] },
+  { id: 'requests', label: 'Game Requests', icon: Activity, desc: 'Incoming play requests, streaming access codes, and approval queue', ops: ['view', 'update'] }
+];
+
+export const hasAdminAccess = (u) => Boolean(u?.isAdmin || Object.values(u?.permissions || {}).some(p => p && (p.view || p.insert || p.update || p.delete)));
+export const hasPermission = (u, tab, action = 'view') => Boolean(u?.isAdmin || u?.permissions?.[tab]?.[action]);
 
 const RequestTimer = ({ createdAt }) => {
   const [timeLeft, setTimeLeft] = useState(0);
@@ -182,12 +200,21 @@ function App() {
   const [approvingRequestId, setApprovingRequestId] = useState(null);
   const [approveCode, setApproveCode] = useState('');
   const [approveLink, setApproveLink] = useState('');
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedRowLinkId, setCopiedRowLinkId] = useState(null);
+  const [copiedRowCodeId, setCopiedRowCodeId] = useState(null);
 
   // Admin Sidebar & Users State
   const [adminTab, setAdminTab] = useState('overview'); // overview, games, nodes, pricing, sessions, players, requests
   const [adminUsersList, setAdminUsersList] = useState([]);
   const [selectedAdminUserForProfile, setSelectedAdminUserForProfile] = useState(null);
   const [adminUserProfileData, setAdminUserProfileData] = useState(null);
+  const [userProfileTab, setUserProfileTab] = useState('activity'); // 'activity' | 'permissions'
+  const [editingPermissions, setEditingPermissions] = useState({});
+  const [editingIsAdmin, setEditingIsAdmin] = useState(false);
+  const [savingPermissions, setSavingPermissions] = useState(false);
+  const [permissionSuccessMsg, setPermissionSuccessMsg] = useState('');
 
   // Admin selected items for CRUD operations
   const [selectedGameId, setSelectedGameId] = useState(null);
@@ -514,7 +541,7 @@ function App() {
 
   // Trigger admin poll when going to admin page
   useEffect(() => {
-    if (currentView === 'admin' && user?.isAdmin) {
+    if (currentView === 'admin' && hasAdminAccess(user)) {
       fetchAdminData();
       const interval = setInterval(fetchAdminData, 5000);
       return () => clearInterval(interval);
@@ -1417,8 +1444,118 @@ function App() {
       const res = await apiFetch(`/api/admin/users/${userId}/profile`);
       setAdminUserProfileData(res);
       setSelectedAdminUserForProfile(userId);
+      setUserProfileTab('activity');
+      setEditingPermissions(res.user.permissions || {});
+      setEditingIsAdmin(Boolean(res.user.isAdmin));
+      setPermissionSuccessMsg('');
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleTogglePermission = (tabId, op) => {
+    setEditingPermissions(prev => {
+      const currentTab = prev[tabId] || {};
+      const nextVal = !currentTab[op];
+      const updatedTab = { ...currentTab, [op]: nextVal };
+      // Granting insert, update, or delete automatically grants view
+      if (nextVal && (op === 'insert' || op === 'update' || op === 'delete')) {
+        updatedTab.view = true;
+      }
+      // Revoking view revokes all operations for this tab
+      if (!nextVal && op === 'view') {
+        updatedTab.insert = false;
+        updatedTab.update = false;
+        updatedTab.delete = false;
+      }
+      return {
+        ...prev,
+        [tabId]: updatedTab
+      };
+    });
+  };
+
+  const handleSetRowPermissions = (tabId, enable) => {
+    const tabDef = ADMIN_TABS.find(t => t.id === tabId);
+    setEditingPermissions(prev => {
+      const updatedTab = {};
+      (tabDef?.ops || ['view', 'insert', 'update', 'delete']).forEach(op => {
+        updatedTab[op] = enable;
+      });
+      return {
+        ...prev,
+        [tabId]: updatedTab
+      };
+    });
+  };
+
+  const handleApplyPreset = (preset) => {
+    if (preset === 'superadmin') {
+      setEditingIsAdmin(true);
+      const allPerms = {};
+      ADMIN_TABS.forEach(t => {
+        allPerms[t.id] = { view: true, insert: true, update: true, delete: true };
+      });
+      setEditingPermissions(allPerms);
+    } else if (preset === 'operator') {
+      setEditingIsAdmin(false);
+      const opPerms = {};
+      ADMIN_TABS.forEach(t => {
+        opPerms[t.id] = { 
+          view: true, 
+          insert: t.ops.includes('insert'), 
+          update: t.ops.includes('update'), 
+          delete: false 
+        };
+      });
+      setEditingPermissions(opPerms);
+    } else if (preset === 'readonly') {
+      setEditingIsAdmin(false);
+      const viewPerms = {};
+      ADMIN_TABS.forEach(t => {
+        viewPerms[t.id] = { view: true, insert: false, update: false, delete: false };
+      });
+      setEditingPermissions(viewPerms);
+    } else if (preset === 'clear') {
+      setEditingIsAdmin(false);
+      setEditingPermissions({});
+    }
+  };
+
+  const handleSaveUserPermissions = async () => {
+    if (!adminUserProfileData?.user) return;
+    setSavingPermissions(true);
+    setPermissionSuccessMsg('');
+    try {
+      const res = await apiFetch(`/api/admin/users/${adminUserProfileData.user.id}/permissions`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          permissions: editingPermissions,
+          isAdmin: editingIsAdmin
+        })
+      });
+      setAdminUserProfileData(prev => ({
+        ...prev,
+        user: {
+          ...prev.user,
+          permissions: res.user.permissions,
+          isAdmin: res.user.isAdmin
+        }
+      }));
+      // If updating currently logged in user, update active state in-session
+      if (user && user.id === adminUserProfileData.user.id) {
+        setUser(prev => ({
+          ...prev,
+          permissions: res.user.permissions,
+          isAdmin: res.user.isAdmin
+        }));
+      }
+      setPermissionSuccessMsg(`Permissions for @${res.user.username} saved successfully!`);
+      setTimeout(() => setPermissionSuccessMsg(''), 4000);
+    } catch (err) {
+      alert(`Failed to save permissions: ${err.message}`);
+    } finally {
+      setSavingPermissions(false);
     }
   };
 
@@ -1491,9 +1628,15 @@ function App() {
                     <History size={16} />
                     History
                   </button>
-                  {user?.isAdmin && (
+                  {hasAdminAccess(user) && (
                     <button 
-                      onClick={() => setCurrentView('admin')} 
+                      onClick={() => {
+                        if (!hasPermission(user, adminTab, 'view')) {
+                          const firstTab = ADMIN_TABS.find(t => hasPermission(user, t.id, 'view'))?.id || 'overview';
+                          setAdminTab(firstTab);
+                        }
+                        setCurrentView('admin');
+                      }} 
                       className={`btn ${currentView === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
                       style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderColor: 'var(--accent-cyan)' }}
                     >
@@ -1763,9 +1906,16 @@ function App() {
                     Request History
                   </button>
 
-                  {user?.isAdmin && (
+                  {hasAdminAccess(user) && (
                     <button 
-                      onClick={() => { setCurrentView('admin'); setMobileMenuOpen(false); }}
+                      onClick={() => { 
+                        if (!hasPermission(user, adminTab, 'view')) {
+                          const firstTab = ADMIN_TABS.find(t => hasPermission(user, t.id, 'view'))?.id || 'overview';
+                          setAdminTab(firstTab);
+                        }
+                        setCurrentView('admin'); 
+                        setMobileMenuOpen(false); 
+                      }}
                       className="btn btn-cyan"
                       style={{ width: '100%', justifyContent: 'flex-start', padding: '0.65rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
                     >
@@ -2287,49 +2437,92 @@ function App() {
 
               {activeGameRequest.status === 'approved' && (
                 <>
-                  <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(50, 255, 120, 0.1)', border: '2px solid var(--status-success)', marginBottom: '2rem' }}>
-                    <CheckCircle2 size={32} color="var(--status-success)" />
+                  <div style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(50, 255, 120, 0.1)', border: '2px solid var(--status-success)', marginBottom: '1.5rem' }}>
+                    <CheckCircle2 size={36} color="var(--status-success)" />
                   </div>
-                  <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem', color: 'var(--status-success)' }}>Session Approved!</h2>
+                  <h2 style={{ fontSize: '1.8rem', marginBottom: '0.5rem', color: 'var(--status-success)' }}>Session Approved!</h2>
                   <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
                     Your session for <strong style={{ color: 'var(--text-primary)' }}>{activeGameRequest.gameTitle}</strong> is ready.
                   </p>
                   
-                  <div style={{ background: 'var(--bg-primary)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '2rem' }}>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Access Code</div>
+                  {/* Access Code Box */}
+                  <div style={{ background: 'var(--bg-primary)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border-color)', marginBottom: '1.25rem', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Access Code</span>
+                      {copiedCode && <span style={{ fontSize: '0.75rem', color: 'var(--status-success)', fontWeight: 600 }}>Copied to clipboard!</span>}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <code style={{ flex: 1, padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '6px', fontSize: '1.2rem', color: 'var(--accent-cyan)', letterSpacing: '2px' }}>
-                        {activeGameRequest.code}
-                      </code>
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={activeGameRequest.code || ''} 
+                        onClick={(e) => e.target.select()}
+                        className="form-input" 
+                        style={{ flex: 1, padding: '0.75rem 1rem', fontSize: '1.2rem', color: 'var(--accent-cyan)', letterSpacing: '2px', fontFamily: 'monospace', fontWeight: 700, background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', cursor: 'text' }}
+                      />
                       <button 
                         className="btn btn-secondary" 
-                        style={{ padding: '0.75rem' }}
+                        style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, minWidth: '95px', justifyContent: 'center' }}
                         onClick={() => {
-                          navigator.clipboard.writeText(activeGameRequest.code);
-                          alert('Code copied to clipboard!');
+                          if (activeGameRequest.code) {
+                            navigator.clipboard.writeText(activeGameRequest.code);
+                            setCopiedCode(true);
+                            setTimeout(() => setCopiedCode(false), 2000);
+                          }
                         }}
                       >
-                        <Copy size={18} />
+                        {copiedCode ? <><Check size={18} color="var(--status-success)" /> <span style={{ color: 'var(--status-success)' }}>Copied</span></> : <><Copy size={18} /> Copy</>}
                       </button>
                     </div>
                   </div>
 
+                  {/* Play Link Box - Copyable text field */}
+                  <div style={{ background: 'var(--bg-primary)', padding: '1.25rem', borderRadius: '10px', border: '1px solid var(--border-color)', marginBottom: '2rem', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Play Link / URL</span>
+                      {copiedLink && <span style={{ fontSize: '0.75rem', color: 'var(--status-success)', fontWeight: 600 }}>Copied to clipboard!</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={activeGameRequest.link || ''} 
+                        onClick={(e) => e.target.select()}
+                        className="form-input" 
+                        style={{ flex: 1, padding: '0.75rem 1rem', fontSize: '0.95rem', color: 'var(--text-primary)', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', cursor: 'text', fontFamily: 'monospace' }}
+                        placeholder="Game link will appear here"
+                      />
+                      <button 
+                        className="btn btn-cyan" 
+                        style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, minWidth: '120px', justifyContent: 'center', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          if (activeGameRequest.link) {
+                            navigator.clipboard.writeText(activeGameRequest.link);
+                            setCopiedLink(true);
+                            setTimeout(() => setCopiedLink(false), 2000);
+                          }
+                        }}
+                      >
+                        {copiedLink ? <><Check size={18} /> Copied!</> : <><Copy size={18} /> Copy Link</>}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                      Copy this link to your clipboard and paste it into your browser or app with your access code.
+                    </div>
+                  </div>
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <a 
-                      href={activeGameRequest.link} 
-                      target="_blank" 
-                      rel="noreferrer"
+                    <button 
                       className="btn btn-cyan"
-                      style={{ padding: '1rem', fontSize: '1.1rem', width: '100%', textDecoration: 'none' }}
+                      style={{ padding: '0.9rem', fontSize: '1rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                       onClick={() => {
-                        // After opening the game, user might want to go to play view to see their token timer
                         setCurrentView('play'); 
                         setActiveSession({ startTime: new Date(), fake: true });
                         setSessionSecondsLeft(systemSettings.sessionDurationMinutes * 60);
                       }}
                     >
-                      <Zap size={20} /> Open to Play Game
-                    </a>
+                      <Clock size={18} /> View Token Timer & Session
+                    </button>
                     <button className="btn btn-secondary" onClick={() => setCurrentView('lobby')}>
                       Return to Lobby
                     </button>
@@ -2523,16 +2716,51 @@ function App() {
                         <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{new Date(req.createdAt).toLocaleString()}</td>
                         <td style={{ padding: '1rem' }}>
                           {req.status === 'approved' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '220px' }}>
                               {req.code && (
-                                <div style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '0.3rem 0.5rem', borderRadius: '4px', fontFamily: 'monospace', display: 'flex', justifyContent: 'space-between' }}>
-                                  <span>Code:</span> <strong>{req.code}</strong>
+                                <div style={{ fontSize: '0.8rem', background: 'var(--bg-tertiary)', padding: '0.35rem 0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span style={{ color: 'var(--text-muted)' }}>Code:</span> 
+                                  <strong style={{ fontFamily: 'monospace', color: 'var(--accent-cyan)' }}>{req.code}</strong>
+                                  <button 
+                                    className="btn btn-secondary" 
+                                    style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                    title="Copy Code"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(req.code);
+                                      setCopiedRowCodeId(req.id);
+                                      setTimeout(() => setCopiedRowCodeId(null), 2000);
+                                    }}
+                                  >
+                                    {copiedRowCodeId === req.id ? <Check size={12} color="var(--status-success)" /> : <Copy size={12} />}
+                                    <span>{copiedRowCodeId === req.id ? 'Copied' : 'Copy'}</span>
+                                  </button>
                                 </div>
                               )}
                               {req.link && (
-                                <a href={req.link} target="_blank" rel="noreferrer" className="btn btn-cyan" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', textDecoration: 'none', textAlign: 'center' }}>
-                                  Play
-                                </a>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <input 
+                                    type="text" 
+                                    readOnly 
+                                    value={req.link} 
+                                    onClick={(e) => e.target.select()}
+                                    className="form-input" 
+                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem', flex: 1, minWidth: '120px', cursor: 'text', background: 'var(--bg-tertiary)', fontFamily: 'monospace' }}
+                                    title="Click to select link"
+                                  />
+                                  <button 
+                                    className="btn btn-cyan" 
+                                    style={{ padding: '0.35rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', whiteSpace: 'nowrap' }}
+                                    title="Copy Link"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(req.link);
+                                      setCopiedRowLinkId(req.id);
+                                      setTimeout(() => setCopiedRowLinkId(null), 2000);
+                                    }}
+                                  >
+                                    {copiedRowLinkId === req.id ? <Check size={12} /> : <Copy size={12} />}
+                                    <span>{copiedRowLinkId === req.id ? 'Copied' : 'Copy Link'}</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           )}
@@ -2797,7 +3025,7 @@ function App() {
         )}
 
         {/* ADMIN DASHBOARD PORTAL WITH SIDEBAR MENU */}
-        {currentView === 'admin' && user?.isAdmin && (
+        {currentView === 'admin' && hasAdminAccess(user) && (
           <div className="animated-fade" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '2rem', minHeight: '75vh' }}>
             
             {/* LEFT-SIDEBAR MENU */}
@@ -2807,79 +3035,37 @@ function App() {
                   ADMIN CONTROL CENTER
                 </div>
                 <h4 style={{ color: 'var(--text-primary)', fontSize: '1.1rem', margin: '0.2rem 0' }}>Vortex Host Console</h4>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>@{user.username} (Super Admin)</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  @{user.username} ({user.isAdmin ? 'Super Admin' : 'Staff Operator'})
+                </div>
               </div>
 
-              {/* Sidebar Menu Items */}
+              {/* Dynamic Permission-Filtered Sidebar Menu Items */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <button 
-                  onClick={() => setAdminTab('overview')}
-                  className={`btn ${adminTab === 'overview' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
-                >
-                  <LayoutDashboard size={16} /> Overview Analytics
-                </button>
-
-                <button 
-                  onClick={() => setAdminTab('games')}
-                  className={`btn ${adminTab === 'games' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
-                >
-                  <Gamepad2 size={16} /> Games Catalog ({games.length})
-                </button>
-
-                <button 
-                  onClick={() => setAdminTab('nodes')}
-                  className={`btn ${adminTab === 'nodes' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
-                >
-                  <Layers size={16} /> Machine Categories ({categories.length})
-                </button>
-
-                <button 
-                  onClick={() => setAdminTab('stations')}
-                  className={`btn ${adminTab === 'stations' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
-                >
-                  <Cpu size={16} /> Hardware Stations ({machines.length})
-                </button>
-
-                <button 
-                  onClick={() => setAdminTab('pricing')}
-                  className={`btn ${adminTab === 'pricing' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
-                >
-                  <Coins size={16} /> Pricing & Token Rates
-                </button>
-
-                <button 
-                  onClick={() => setAdminTab('sessions')}
-                  className={`btn ${adminTab === 'sessions' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
-                >
-                  <Activity size={16} /> Live Streams ({adminSessions.length})
-                </button>
-
-                <button 
-                  onClick={() => setAdminTab('players')}
-                  className={`btn ${adminTab === 'players' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem' }}
-                >
-                  <Users size={16} /> Registered Players ({adminUsersList.length})
-                </button>
-
-                <button 
-                  onClick={() => setAdminTab('requests')} 
-                  className={`btn ${adminTab === 'requests' ? 'btn-cyan' : 'btn-secondary'}`}
-                  style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem', position: 'relative' }}
-                >
-                  <Activity size={16} /> Game Requests
-                  {pendingRequests.length > 0 && (
-                    <span style={{ position: 'absolute', right: '10px', background: 'var(--status-danger)', color: 'white', borderRadius: '50%', padding: '2px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                      {pendingRequests.length}
-                    </span>
-                  )}
-                </button>
+                {ADMIN_TABS.filter(tab => hasPermission(user, tab.id, 'view')).map((tab) => {
+                  const TabIcon = tab.icon;
+                  const count = tab.id === 'games' ? games.length 
+                              : tab.id === 'nodes' ? categories.length 
+                              : tab.id === 'stations' ? machines.length 
+                              : tab.id === 'sessions' ? adminSessions.length 
+                              : tab.id === 'players' ? adminUsersList.length 
+                              : null;
+                  return (
+                    <button 
+                      key={tab.id}
+                      onClick={() => setAdminTab(tab.id)}
+                      className={`btn ${adminTab === tab.id ? 'btn-cyan' : 'btn-secondary'}`}
+                      style={{ justifyContent: 'flex-start', padding: '0.75rem 1rem', fontSize: '0.85rem', gap: '0.6rem', position: 'relative' }}
+                    >
+                      <TabIcon size={16} /> {tab.label} {count !== null ? `(${count})` : ''}
+                      {tab.id === 'requests' && pendingRequests.length > 0 && (
+                        <span style={{ position: 'absolute', right: '10px', background: 'var(--status-danger)', color: 'white', borderRadius: '50%', padding: '2px 8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                          {pendingRequests.length}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -3069,13 +3255,15 @@ function App() {
                           {selectedGameId ? (
                             <>
                               <button type="button" onClick={handleClearGame} className="btn btn-secondary" style={{ flex: 1 }}>Insert New</button>
-                              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Update</button>
-                              <button type="button" onClick={() => handleToggleGameStatus(games.find(g => g.id === selectedGameId))} className="btn btn-secondary" style={{ flex: 1 }}>{games.find(g => g.id === selectedGameId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
-                              <button type="button" onClick={() => handleDeleteGame(selectedGameId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                              <button type="submit" disabled={!hasPermission(user, 'games', 'update')} className="btn btn-primary" style={{ flex: 1, opacity: !hasPermission(user, 'games', 'update') ? 0.5 : 1 }}>Update</button>
+                              <button type="button" disabled={!hasPermission(user, 'games', 'update')} onClick={() => handleToggleGameStatus(games.find(g => g.id === selectedGameId))} className="btn btn-secondary" style={{ flex: 1, opacity: !hasPermission(user, 'games', 'update') ? 0.5 : 1 }}>{games.find(g => g.id === selectedGameId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
+                              {hasPermission(user, 'games', 'delete') && (
+                                <button type="button" onClick={() => handleDeleteGame(selectedGameId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                              )}
                             </>
                           ) : (
-                            <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem' }}>
-                              Publish Game to Catalog
+                            <button type="submit" disabled={!hasPermission(user, 'games', 'insert')} className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', opacity: !hasPermission(user, 'games', 'insert') ? 0.5 : 1 }}>
+                              {hasPermission(user, 'games', 'insert') ? 'Publish Game to Catalog' : 'Publish (Insert Permission Required)'}
                             </button>
                           )}
                         </div>
@@ -3102,9 +3290,11 @@ function App() {
                                 </div>
                               </div>
                             </div>
-                            <button onClick={() => handleDeleteGame(g.id)} className="btn btn-secondary" style={{ padding: '0.35rem 0.5rem', border: 'none' }}>
-                              <Trash2 size={14} color="var(--status-danger)" />
-                            </button>
+                            {hasPermission(user, 'games', 'delete') && (
+                              <button onClick={() => handleDeleteGame(g.id)} className="btn btn-secondary" style={{ padding: '0.35rem 0.5rem', border: 'none' }}>
+                                <Trash2 size={14} color="var(--status-danger)" />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -3193,13 +3383,15 @@ function App() {
                           {selectedCatId ? (
                             <>
                               <button type="button" onClick={handleClearCategory} className="btn btn-secondary" style={{ flex: 1 }}>Insert New</button>
-                              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Update</button>
-                              <button type="button" onClick={() => handleToggleCategoryStatus(categories.find(c => c.id === selectedCatId))} className="btn btn-secondary" style={{ flex: 1 }}>{categories.find(c => c.id === selectedCatId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
-                              <button type="button" onClick={() => handleDeleteCategory(selectedCatId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                              <button type="submit" disabled={!hasPermission(user, 'nodes', 'update')} className="btn btn-primary" style={{ flex: 1, opacity: !hasPermission(user, 'nodes', 'update') ? 0.5 : 1 }}>Update</button>
+                              <button type="button" disabled={!hasPermission(user, 'nodes', 'update')} onClick={() => handleToggleCategoryStatus(categories.find(c => c.id === selectedCatId))} className="btn btn-secondary" style={{ flex: 1, opacity: !hasPermission(user, 'nodes', 'update') ? 0.5 : 1 }}>{categories.find(c => c.id === selectedCatId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
+                              {hasPermission(user, 'nodes', 'delete') && (
+                                <button type="button" onClick={() => handleDeleteCategory(selectedCatId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                              )}
                             </>
                           ) : (
-                            <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}>
-                              <Plus size={16} /> Add Machine Category Value
+                            <button type="submit" disabled={!hasPermission(user, 'nodes', 'insert')} className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', opacity: !hasPermission(user, 'nodes', 'insert') ? 0.5 : 1 }}>
+                              <Plus size={16} /> {hasPermission(user, 'nodes', 'insert') ? 'Add Machine Category Value' : 'Add Category (Insert Permission Required)'}
                             </button>
                           )}
                         </div>
@@ -3239,14 +3431,16 @@ function App() {
                                 </div>
                               </div>
 
-                              <button 
-                                onClick={() => handleDeleteCategory(cat.id)} 
-                                className="btn btn-secondary" 
-                                style={{ padding: '0.35rem 0.6rem' }}
-                                title="Delete Machine Category"
-                              >
-                                <Trash2 size={14} color="var(--status-danger)" />
-                              </button>
+                              {hasPermission(user, 'nodes', 'delete') && (
+                                <button 
+                                  onClick={() => handleDeleteCategory(cat.id)} 
+                                  className="btn btn-secondary" 
+                                  style={{ padding: '0.35rem 0.6rem' }}
+                                  title="Delete Machine Category"
+                                >
+                                  <Trash2 size={14} color="var(--status-danger)" />
+                                </button>
+                              )}
                             </div>
                           );
                         })}
@@ -3402,13 +3596,15 @@ function App() {
                           {selectedMachineId ? (
                             <>
                               <button type="button" onClick={handleClearMachine} className="btn btn-secondary" style={{ flex: 1 }}>Insert New</button>
-                              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Update</button>
-                              <button type="button" onClick={() => handleToggleMachineStatus(machines.find(m => m.id === selectedMachineId))} className="btn btn-secondary" style={{ flex: 1 }}>{machines.find(m => m.id === selectedMachineId)?.status !== 'offline' ? 'Set Offline' : 'Set Available'}</button>
-                              <button type="button" onClick={() => handleDeleteMachine(selectedMachineId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                              <button type="submit" disabled={!hasPermission(user, 'stations', 'update')} className="btn btn-primary" style={{ flex: 1, opacity: !hasPermission(user, 'stations', 'update') ? 0.5 : 1 }}>Update</button>
+                              <button type="button" disabled={!hasPermission(user, 'stations', 'update')} onClick={() => handleToggleMachineStatus(machines.find(m => m.id === selectedMachineId))} className="btn btn-secondary" style={{ flex: 1, opacity: !hasPermission(user, 'stations', 'update') ? 0.5 : 1 }}>{machines.find(m => m.id === selectedMachineId)?.status !== 'offline' ? 'Set Offline' : 'Set Available'}</button>
+                              {hasPermission(user, 'stations', 'delete') && (
+                                <button type="button" onClick={() => handleDeleteMachine(selectedMachineId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                              )}
                             </>
                           ) : (
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                              + Connect Station Node
+                            <button type="submit" disabled={!hasPermission(user, 'stations', 'insert')} className="btn btn-primary" style={{ width: '100%', padding: '0.65rem', fontSize: '0.85rem', marginTop: '0.5rem', opacity: !hasPermission(user, 'stations', 'insert') ? 0.5 : 1 }}>
+                              + {hasPermission(user, 'stations', 'insert') ? 'Connect Station Node' : 'Connect Station (Insert Permission Required)'}
                             </button>
                           )}
                         </div>
@@ -3433,9 +3629,11 @@ function App() {
                                     Category: {catObj ? catObj.name : m.type.toUpperCase()}
                                   </span>
                                 </div>
-                                <button onClick={() => handleDeleteMachine(m.id)} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem' }}>
-                                  <Trash2 size={12} color="var(--status-danger)" />
-                                </button>
+                                {hasPermission(user, 'stations', 'delete') && (
+                                  <button onClick={() => handleDeleteMachine(m.id)} className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem' }}>
+                                    <Trash2 size={12} color="var(--status-danger)" />
+                                  </button>
+                                )}
                               </div>
                             );
                           })
@@ -3494,8 +3692,8 @@ function App() {
                           <input type="text" className="form-input form-input-cyan" placeholder="https://example.com/bg-mobile-dark.jpg" value={configHomeBgMobileDarkUrl} onChange={(e) => setConfigHomeBgMobileDarkUrl(e.target.value)} />
                         </div>
 
-                        <button type="submit" className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}>
-                          Save System Settings
+                        <button type="submit" disabled={!hasPermission(user, 'pricing', 'update')} className="btn btn-cyan" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem', opacity: !hasPermission(user, 'pricing', 'update') ? 0.5 : 1 }}>
+                          {hasPermission(user, 'pricing', 'update') ? 'Save System Settings' : 'Save (Update Permission Required)'}
                         </button>
                       </form>
                     </div>
@@ -3525,13 +3723,15 @@ function App() {
                           {selectedPkgId ? (
                             <>
                               <button type="button" onClick={handleClearPackage} className="btn btn-secondary" style={{ flex: 1 }}>Insert New</button>
-                              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Update</button>
-                              <button type="button" onClick={() => handleTogglePackageStatus(packages.find(p => p.id === selectedPkgId))} className="btn btn-secondary" style={{ flex: 1 }}>{packages.find(p => p.id === selectedPkgId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
-                              <button type="button" onClick={() => handleDeletePackage(selectedPkgId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                              <button type="submit" disabled={!hasPermission(user, 'pricing', 'update')} className="btn btn-primary" style={{ flex: 1, opacity: !hasPermission(user, 'pricing', 'update') ? 0.5 : 1 }}>Update</button>
+                              <button type="button" disabled={!hasPermission(user, 'pricing', 'update')} onClick={() => handleTogglePackageStatus(packages.find(p => p.id === selectedPkgId))} className="btn btn-secondary" style={{ flex: 1, opacity: !hasPermission(user, 'pricing', 'update') ? 0.5 : 1 }}>{packages.find(p => p.id === selectedPkgId)?.isActive !== false ? 'Set Inactive' : 'Set Active'}</button>
+                              {hasPermission(user, 'pricing', 'delete') && (
+                                <button type="button" onClick={() => handleDeletePackage(selectedPkgId)} className="btn btn-secondary" style={{ flex: 1, backgroundColor: 'rgba(255, 77, 77, 0.1)', color: 'var(--status-danger)' }}>Delete</button>
+                              )}
                             </>
                           ) : (
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
-                              Add Package
+                            <button type="submit" disabled={!hasPermission(user, 'pricing', 'insert')} className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', opacity: !hasPermission(user, 'pricing', 'insert') ? 0.5 : 1 }}>
+                              {hasPermission(user, 'pricing', 'insert') ? 'Add Package' : 'Add Package (Insert Permission Required)'}
                             </button>
                           )}
                         </div>
@@ -3544,9 +3744,11 @@ function App() {
                                onClick={() => handleSelectPackage(pkg)}
                                style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: selectedPkgId === pkg.id ? 'rgba(0, 240, 255, 0.1)' : 'var(--bg-tertiary)', borderRadius: '4px', border: selectedPkgId === pkg.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-color)', alignItems: 'center', opacity: pkg.isActive === false ? 0.6 : 1 }}>
                             <div style={{ color: 'var(--text-primary)', fontSize: '0.85rem' }}>{pkg.title} ({pkg.tokens} Keys - ${pkg.price?.toFixed(2)})</div>
-                            <button onClick={() => handleDeletePackage(pkg.id)} className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem' }}>
-                              <Trash2 size={12} color="var(--status-danger)" />
-                            </button>
+                            {hasPermission(user, 'pricing', 'delete') && (
+                              <button onClick={() => handleDeletePackage(pkg.id)} className="btn btn-secondary" style={{ padding: '0.2rem 0.4rem' }}>
+                                <Trash2 size={12} color="var(--status-danger)" />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -3577,13 +3779,15 @@ function App() {
                                 Station: {sess.machineName} ({sess.machineType.toUpperCase()}) | Started: {new Date(sess.startTime).toLocaleTimeString()}
                               </div>
                             </div>
-                            <button 
-                              onClick={() => handleTerminateUserSession(sess.id)} 
-                              className="btn btn-secondary" 
-                              style={{ color: 'var(--status-danger)', borderColor: 'rgba(255,0,85,0.2)', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
-                            >
-                              Disconnect Player
-                            </button>
+                            {(hasPermission(user, 'sessions', 'delete') || hasPermission(user, 'sessions', 'update')) && (
+                              <button 
+                                onClick={() => handleTerminateUserSession(sess.id)} 
+                                className="btn btn-secondary" 
+                                style={{ color: 'var(--status-danger)', borderColor: 'rgba(255,0,85,0.2)', padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                              >
+                                Disconnect Player
+                              </button>
+                            )}
                           </div>
                         ))
                       )}
@@ -3613,9 +3817,22 @@ function App() {
                         <p style={{ color: 'var(--text-muted)' }}>Loading profile data...</p>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                          <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                             <div>
-                              <h4 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', margin: 0 }}>@{adminUserProfileData.user.username}</h4>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h4 style={{ fontSize: '1.5rem', color: 'var(--text-primary)', margin: 0 }}>@{adminUserProfileData.user.username}</h4>
+                                <span style={{ 
+                                  fontSize: '0.75rem', 
+                                  padding: '0.2rem 0.6rem', 
+                                  borderRadius: '20px', 
+                                  fontWeight: 'bold',
+                                  background: adminUserProfileData.user.isAdmin ? 'rgba(0, 243, 255, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                                  color: adminUserProfileData.user.isAdmin ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                                  border: `1px solid ${adminUserProfileData.user.isAdmin ? 'var(--accent-cyan)' : 'var(--border-color)'}`
+                                }}>
+                                  {adminUserProfileData.user.isAdmin ? 'SUPER ADMIN' : (Object.values(adminUserProfileData.user.permissions || {}).some(p => p?.view) ? 'STAFF OPERATOR' : 'PLAYER')}
+                                </span>
+                              </div>
                               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0.2rem 0 0 0' }}>Joined: {new Date(adminUserProfileData.user.createdAt).toLocaleDateString()}</p>
                             </div>
                             <div style={{ background: 'rgba(0, 243, 255, 0.1)', border: '1px solid var(--accent-cyan)', padding: '0.5rem 1rem', borderRadius: '8px', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>
@@ -3624,116 +3841,388 @@ function App() {
                             </div>
                           </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                            {/* Transactions Chart */}
-                            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                              <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Token Purchases History</h4>
-                              {adminUserProfileData.transactions.filter(t => t.type === 'purchase').length > 0 ? (
-                                <>
-                                  <div style={{ width: '100%', height: '300px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                      <BarChart data={adminUserProfileData.transactions.filter(t => t.type === 'purchase').map(t => ({ ...t, amount: parseInt(t.amount) }))}>
-                                        <XAxis dataKey="createdAt" tickFormatter={(val) => new Date(val).toLocaleDateString()} stroke="var(--text-muted)" fontSize={12} />
-                                        <YAxis stroke="var(--text-muted)" fontSize={12} />
-                                        <Tooltip contentStyle={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }} />
-                                        <Bar dataKey="amount" fill="var(--accent-cyan)" radius={[4, 4, 0, 0]} name="Tokens Bought" />
-                                      </BarChart>
-                                    </ResponsiveContainer>
-                                  </div>
-                                  <div style={{ marginTop: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
-                                    <table style={{ width: '100%', textAlign: 'left', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
-                                      <thead>
-                                        <tr style={{ color: 'var(--text-muted)' }}>
-                                          <th style={{ paddingBottom: '0.5rem' }}>Date</th>
-                                          <th style={{ paddingBottom: '0.5rem' }}>Amount</th>
-                                          <th style={{ paddingBottom: '0.5rem' }}>Cost</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {adminUserProfileData.transactions.filter(t => t.type === 'purchase').map(t => (
-                                          <tr key={t.id} style={{ borderTop: '1px solid var(--border-color)' }}>
-                                            <td style={{ padding: '0.75rem 0', color: 'var(--text-secondary)' }}>{new Date(t.createdAt).toLocaleDateString()}</td>
-                                            <td style={{ padding: '0.75rem 0', color: 'var(--accent-cyan)' }}>+{t.amount} Keys</td>
-                                            <td style={{ padding: '0.75rem 0', color: 'var(--status-success)' }}>${t.cost.toFixed(2)}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </>
-                              ) : (
-                                <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>No purchase transactions found.</p>
-                              )}
-                            </div>
-
-                            {/* Requests Chart */}
-                            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                              <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Game Requests Overview</h4>
-                              {adminUserProfileData.requests.length > 0 ? (
-                                <>
-                                  <div style={{ width: '100%', height: '300px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                      <PieChart>
-                                        <Pie
-                                          data={[
-                                            { name: 'Approved', value: adminUserProfileData.requests.filter(r => r.status === 'approved').length, color: '#00ffaa' },
-                                            { name: 'Pending', value: adminUserProfileData.requests.filter(r => r.status === 'pending').length, color: '#ffaa00' },
-                                            { name: 'Rejected', value: adminUserProfileData.requests.filter(r => r.status === 'rejected').length, color: '#ff4d4d' },
-                                            { name: 'Timeout', value: adminUserProfileData.requests.filter(r => r.status === 'timeout').length, color: '#888' }
-                                          ].filter(d => d.value > 0)}
-                                          cx="50%"
-                                          cy="50%"
-                                          innerRadius={60}
-                                          outerRadius={90}
-                                          dataKey="value"
-                                        >
-                                          {([
-                                            { name: 'Approved', value: adminUserProfileData.requests.filter(r => r.status === 'approved').length, color: '#00ffaa' },
-                                            { name: 'Pending', value: adminUserProfileData.requests.filter(r => r.status === 'pending').length, color: '#ffaa00' },
-                                            { name: 'Rejected', value: adminUserProfileData.requests.filter(r => r.status === 'rejected').length, color: '#ff4d4d' },
-                                            { name: 'Timeout', value: adminUserProfileData.requests.filter(r => r.status === 'timeout').length, color: '#888' }
-                                          ].filter(d => d.value > 0)).map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                          ))}
-                                        </Pie>
-                                        <Tooltip contentStyle={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }} />
-                                        <Legend />
-                                      </PieChart>
-                                    </ResponsiveContainer>
-                                  </div>
-                                  <div style={{ marginTop: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
-                                    <table style={{ width: '100%', textAlign: 'left', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
-                                      <thead>
-                                        <tr style={{ color: 'var(--text-muted)' }}>
-                                          <th style={{ paddingBottom: '0.5rem' }}>Date</th>
-                                          <th style={{ paddingBottom: '0.5rem' }}>Game</th>
-                                          <th style={{ paddingBottom: '0.5rem' }}>Status</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {adminUserProfileData.requests.map(r => (
-                                          <tr key={r.id} style={{ borderTop: '1px solid var(--border-color)' }}>
-                                            <td style={{ padding: '0.75rem 0', color: 'var(--text-secondary)' }}>{new Date(r.createdAt).toLocaleDateString()}</td>
-                                            <td style={{ padding: '0.75rem 0', color: 'var(--text-primary)' }}>{r.gameTitle}</td>
-                                            <td style={{ padding: '0.75rem 0' }}>
-                                              <span style={{ 
-                                                color: r.status === 'approved' ? 'var(--status-success)' : r.status === 'pending' ? 'var(--status-warning)' : r.status === 'rejected' ? 'var(--status-danger)' : '#888',
-                                                background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold'
-                                              }}>
-                                                {r.status.toUpperCase()}
-                                              </span>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </>
-                              ) : (
-                                <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>No game requests found.</p>
-                              )}
-                            </div>
+                          {/* Profile Sub-Navigation Tabs */}
+                          <div style={{ display: 'flex', gap: '0.75rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                            <button 
+                              type="button"
+                              className={`btn ${userProfileTab === 'activity' ? 'btn-cyan' : 'btn-secondary'}`}
+                              style={{ padding: '0.6rem 1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                              onClick={() => setUserProfileTab('activity')}
+                            >
+                              <Activity size={16} /> Activity & Transactions
+                            </button>
+                            <button 
+                              type="button"
+                              className={`btn ${userProfileTab === 'permissions' ? 'btn-cyan' : 'btn-secondary'}`}
+                              style={{ padding: '0.6rem 1.25rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                              onClick={() => setUserProfileTab('permissions')}
+                            >
+                              <Shield size={16} /> Left Tab Permissions Manager
+                            </button>
                           </div>
+
+                          {/* SUB-VIEW 1: ACTIVITY & ANALYTICS */}
+                          {userProfileTab === 'activity' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                              {/* Transactions Chart */}
+                              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                                <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Token Purchases History</h4>
+                                {adminUserProfileData.transactions.filter(t => t.type === 'purchase').length > 0 ? (
+                                  <>
+                                    <div style={{ width: '100%', height: '300px' }}>
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={adminUserProfileData.transactions.filter(t => t.type === 'purchase').map(t => ({ ...t, amount: parseInt(t.amount) }))}>
+                                          <XAxis dataKey="createdAt" tickFormatter={(val) => new Date(val).toLocaleDateString()} stroke="var(--text-muted)" fontSize={12} />
+                                          <YAxis stroke="var(--text-muted)" fontSize={12} />
+                                          <Tooltip contentStyle={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }} />
+                                          <Bar dataKey="amount" fill="var(--accent-cyan)" radius={[4, 4, 0, 0]} name="Tokens Bought" />
+                                        </BarChart>
+                                      </ResponsiveContainer>
+                                    </div>
+                                    <div style={{ marginTop: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
+                                      <table style={{ width: '100%', textAlign: 'left', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                          <tr style={{ color: 'var(--text-muted)' }}>
+                                            <th style={{ paddingBottom: '0.5rem' }}>Date</th>
+                                            <th style={{ paddingBottom: '0.5rem' }}>Amount</th>
+                                            <th style={{ paddingBottom: '0.5rem' }}>Cost</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {adminUserProfileData.transactions.filter(t => t.type === 'purchase').map(t => (
+                                            <tr key={t.id} style={{ borderTop: '1px solid var(--border-color)' }}>
+                                              <td style={{ padding: '0.75rem 0', color: 'var(--text-secondary)' }}>{new Date(t.createdAt).toLocaleDateString()}</td>
+                                              <td style={{ padding: '0.75rem 0', color: 'var(--accent-cyan)' }}>+{t.amount} Keys</td>
+                                              <td style={{ padding: '0.75rem 0', color: 'var(--status-success)' }}>${t.cost.toFixed(2)}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>No purchase transactions found.</p>
+                                )}
+                              </div>
+
+                              {/* Requests Chart */}
+                              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                                <h4 style={{ fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>Game Requests Overview</h4>
+                                {adminUserProfileData.requests.length > 0 ? (
+                                  <>
+                                    <div style={{ width: '100%', height: '300px' }}>
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                          <Pie
+                                            data={[
+                                              { name: 'Approved', value: adminUserProfileData.requests.filter(r => r.status === 'approved').length, color: '#00ffaa' },
+                                              { name: 'Pending', value: adminUserProfileData.requests.filter(r => r.status === 'pending').length, color: '#ffaa00' },
+                                              { name: 'Rejected', value: adminUserProfileData.requests.filter(r => r.status === 'rejected').length, color: '#ff4d4d' },
+                                              { name: 'Timeout', value: adminUserProfileData.requests.filter(r => r.status === 'timeout').length, color: '#888' }
+                                            ].filter(d => d.value > 0)}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={90}
+                                            dataKey="value"
+                                          >
+                                            {([
+                                              { name: 'Approved', value: adminUserProfileData.requests.filter(r => r.status === 'approved').length, color: '#00ffaa' },
+                                              { name: 'Pending', value: adminUserProfileData.requests.filter(r => r.status === 'pending').length, color: '#ffaa00' },
+                                              { name: 'Rejected', value: adminUserProfileData.requests.filter(r => r.status === 'rejected').length, color: '#ff4d4d' },
+                                              { name: 'Timeout', value: adminUserProfileData.requests.filter(r => r.status === 'timeout').length, color: '#888' }
+                                            ].filter(d => d.value > 0)).map((entry, index) => (
+                                              <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                          </Pie>
+                                          <Tooltip contentStyle={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }} />
+                                          <Legend />
+                                        </PieChart>
+                                      </ResponsiveContainer>
+                                    </div>
+                                    <div style={{ marginTop: '1.5rem', maxHeight: '200px', overflowY: 'auto' }}>
+                                      <table style={{ width: '100%', textAlign: 'left', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                          <tr style={{ color: 'var(--text-muted)' }}>
+                                            <th style={{ paddingBottom: '0.5rem' }}>Date</th>
+                                            <th style={{ paddingBottom: '0.5rem' }}>Game</th>
+                                            <th style={{ paddingBottom: '0.5rem' }}>Status</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {adminUserProfileData.requests.map(r => (
+                                            <tr key={r.id} style={{ borderTop: '1px solid var(--border-color)' }}>
+                                              <td style={{ padding: '0.75rem 0', color: 'var(--text-secondary)' }}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                                              <td style={{ padding: '0.75rem 0', color: 'var(--text-primary)' }}>{r.gameTitle}</td>
+                                              <td style={{ padding: '0.75rem 0' }}>
+                                                <span style={{ 
+                                                  color: r.status === 'approved' ? 'var(--status-success)' : r.status === 'pending' ? 'var(--status-warning)' : r.status === 'rejected' ? 'var(--status-danger)' : '#888',
+                                                  background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold'
+                                                }}>
+                                                  {r.status.toUpperCase()}
+                                                </span>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}>No game requests found.</p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* SUB-VIEW 2: DEDICATED TAB PERMISSIONS MANAGER */}
+                          {userProfileTab === 'permissions' && (
+                            <div className="glass-panel animated-fade" style={{ padding: '1.75rem' }}>
+                              {/* Header */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
+                                <div>
+                                  <h4 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: '0 0 0.4rem 0', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                    <Shield size={20} color="var(--accent-cyan)" /> Left Sidebar Tab Permissions & Access Control
+                                  </h4>
+                                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0, maxWidth: '680px' }}>
+                                    Configure which left sidebar tabs <strong>@{adminUserProfileData.user.username}</strong> is allowed to access, and whether they can insert, update, delete, or view data within each tab.
+                                  </p>
+                                </div>
+
+                                {/* Super Admin Override Toggle */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--bg-tertiary)', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                  <div>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: editingIsAdmin ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>
+                                      Super Admin Role
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                      {editingIsAdmin ? 'Full system override active' : 'Enforce tab-by-tab permissions'}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingIsAdmin(!editingIsAdmin)}
+                                    className={`btn ${editingIsAdmin ? 'btn-cyan' : 'btn-secondary'}`}
+                                    style={{ padding: '0.35rem 0.8rem', fontSize: '0.75rem', fontWeight: 'bold' }}
+                                  >
+                                    {editingIsAdmin ? 'ENABLED' : 'DISABLED'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Presets Toolbar */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Quick Presets:</span>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                                    onClick={() => handleApplyPreset('superadmin')}
+                                  >
+                                    Grant All (Super Admin)
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                                    onClick={() => handleApplyPreset('operator')}
+                                  >
+                                    Staff Operator (View + Add + Edit)
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                                    onClick={() => handleApplyPreset('readonly')}
+                                  >
+                                    Read-Only Viewer
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', color: 'var(--status-danger)' }}
+                                    onClick={() => handleApplyPreset('clear')}
+                                  >
+                                    Revoke All Permissions
+                                  </button>
+                                </div>
+                              </div>
+
+                              {editingIsAdmin && (
+                                <div style={{ background: 'rgba(0, 243, 255, 0.08)', border: '1px solid var(--accent-cyan)', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.25rem', color: 'var(--accent-cyan)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <Unlock size={16} />
+                                  <span><strong>Super Admin Override Active:</strong> This user automatically possesses unrestricted View, Insert, Update, and Delete capabilities across every tab. Toggles below will also be saved for when Super Admin is toggled off.</span>
+                                </div>
+                              )}
+
+                              {/* Permission Matrix Table */}
+                              <div style={{ overflowX: 'auto', marginBottom: '1.75rem' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                                  <thead>
+                                    <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                                      <th style={{ padding: '0.85rem 1rem', width: '32%' }}>Admin Tab (Left Sidebar)</th>
+                                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '14%' }}>View (Read)</th>
+                                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '14%' }}>Insert (Create)</th>
+                                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '14%' }}>Update (Edit)</th>
+                                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '14%' }}>Delete (Remove)</th>
+                                      <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '12%' }}>Row Quick Action</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {ADMIN_TABS.map((tab) => {
+                                      const TabIcon = tab.icon;
+                                      const tabPerms = editingPermissions[tab.id] || {};
+                                      const isViewChecked = Boolean(tabPerms.view);
+                                      const isInsertChecked = Boolean(tabPerms.insert);
+                                      const isUpdateChecked = Boolean(tabPerms.update);
+                                      const isDeleteChecked = Boolean(tabPerms.delete);
+                                      const allChecked = tab.ops.every(op => tabPerms[op]);
+
+                                      return (
+                                        <tr key={tab.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }}>
+                                          {/* Tab Info */}
+                                          <td style={{ padding: '0.85rem 1rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                              <div style={{ padding: '0.4rem', borderRadius: '6px', background: isViewChecked ? 'rgba(0, 243, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)', color: isViewChecked ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                                                <TabIcon size={18} />
+                                              </div>
+                                              <div>
+                                                <div style={{ fontWeight: 600, color: isViewChecked ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                                                  {tab.label}
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                  {tab.desc}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </td>
+
+                                          {/* View Column */}
+                                          <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '0.4rem' }}>
+                                              <input 
+                                                type="checkbox"
+                                                checked={isViewChecked}
+                                                onChange={() => handleTogglePermission(tab.id, 'view')}
+                                                style={{ width: '16px', height: '16px', accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+                                              />
+                                              <span style={{ fontSize: '0.75rem', color: isViewChecked ? 'var(--accent-cyan)' : 'var(--text-muted)', fontWeight: isViewChecked ? 600 : 'normal' }}>
+                                                {isViewChecked ? 'Allowed' : 'Denied'}
+                                              </span>
+                                            </label>
+                                          </td>
+
+                                          {/* Insert Column */}
+                                          <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                                            {tab.ops.includes('insert') ? (
+                                              <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '0.4rem' }}>
+                                                <input 
+                                                  type="checkbox"
+                                                  checked={isInsertChecked}
+                                                  onChange={() => handleTogglePermission(tab.id, 'insert')}
+                                                  style={{ width: '16px', height: '16px', accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+                                                />
+                                                <span style={{ fontSize: '0.75rem', color: isInsertChecked ? 'var(--status-success)' : 'var(--text-muted)', fontWeight: isInsertChecked ? 600 : 'normal' }}>
+                                                  {isInsertChecked ? 'Allowed' : 'Denied'}
+                                                </span>
+                                              </label>
+                                            ) : (
+                                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>
+                                            )}
+                                          </td>
+
+                                          {/* Update Column */}
+                                          <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                                            {tab.ops.includes('update') ? (
+                                              <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '0.4rem' }}>
+                                                <input 
+                                                  type="checkbox"
+                                                  checked={isUpdateChecked}
+                                                  onChange={() => handleTogglePermission(tab.id, 'update')}
+                                                  style={{ width: '16px', height: '16px', accentColor: 'var(--accent-cyan)', cursor: 'pointer' }}
+                                                />
+                                                <span style={{ fontSize: '0.75rem', color: isUpdateChecked ? 'var(--accent-cyan)' : 'var(--text-muted)', fontWeight: isUpdateChecked ? 600 : 'normal' }}>
+                                                  {isUpdateChecked ? 'Allowed' : 'Denied'}
+                                                </span>
+                                              </label>
+                                            ) : (
+                                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>
+                                            )}
+                                          </td>
+
+                                          {/* Delete Column */}
+                                          <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                                            {tab.ops.includes('delete') ? (
+                                              <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', gap: '0.4rem' }}>
+                                                <input 
+                                                  type="checkbox"
+                                                  checked={isDeleteChecked}
+                                                  onChange={() => handleTogglePermission(tab.id, 'delete')}
+                                                  style={{ width: '16px', height: '16px', accentColor: 'var(--status-danger)', cursor: 'pointer' }}
+                                                />
+                                                <span style={{ fontSize: '0.75rem', color: isDeleteChecked ? 'var(--status-danger)' : 'var(--text-muted)', fontWeight: isDeleteChecked ? 600 : 'normal' }}>
+                                                  {isDeleteChecked ? 'Allowed' : 'Denied'}
+                                                </span>
+                                              </label>
+                                            ) : (
+                                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>
+                                            )}
+                                          </td>
+
+                                          {/* Quick Toggle Column */}
+                                          <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleSetRowPermissions(tab.id, !allChecked)}
+                                              className="btn btn-secondary"
+                                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}
+                                            >
+                                              {allChecked ? 'Clear' : 'All'}
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Feedback Banner */}
+                              {permissionSuccessMsg && (
+                                <div style={{ background: 'rgba(50, 255, 120, 0.1)', border: '1px solid var(--status-success)', color: 'var(--status-success)', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                                  <CheckCircle2 size={18} />
+                                  <span>{permissionSuccessMsg}</span>
+                                </div>
+                              )}
+
+                              {/* Footer Save Actions */}
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  onClick={() => {
+                                    setEditingPermissions(adminUserProfileData.user.permissions || {});
+                                    setEditingIsAdmin(Boolean(adminUserProfileData.user.isAdmin));
+                                    setPermissionSuccessMsg('');
+                                  }}
+                                  disabled={savingPermissions}
+                                >
+                                  Reset Changes
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-cyan"
+                                  style={{ padding: '0.75rem 2rem', fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                  onClick={handleSaveUserPermissions}
+                                  disabled={savingPermissions || (!user?.isAdmin && !user?.permissions?.players?.update)}
+                                >
+                                  <Shield size={18} />
+                                  {savingPermissions ? 'Saving Permissions...' : 'Save Permissions'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -3851,7 +4340,8 @@ function App() {
                             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                               <button 
                                 className="btn btn-cyan" 
-                                style={{ flex: 1, padding: '0.75rem', fontSize: '0.9rem' }}
+                                style={{ flex: 1, padding: '0.75rem', fontSize: '0.9rem', opacity: !hasPermission(user, 'requests', 'update') ? 0.5 : 1 }}
+                                disabled={!hasPermission(user, 'requests', 'update')}
                                 onClick={() => {
                                   setApprovingRequestId(req.id);
                                   setApproveCode('');
@@ -3862,7 +4352,8 @@ function App() {
                               </button>
                               <button 
                                 className="btn btn-secondary" 
-                                style={{ padding: '0.75rem 1.5rem', fontSize: '0.9rem', color: 'var(--status-danger)' }}
+                                style={{ padding: '0.75rem 1.5rem', fontSize: '0.9rem', color: 'var(--status-danger)', opacity: !hasPermission(user, 'requests', 'update') ? 0.5 : 1 }}
+                                disabled={!hasPermission(user, 'requests', 'update')}
                                 onClick={async () => {
                                   if (confirm('Reject this game request?')) {
                                     try {
